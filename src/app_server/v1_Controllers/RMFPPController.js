@@ -1,4 +1,6 @@
 const axios = require('axios');
+const { Pool } = require('pg');
+const https = require('https');
 var RMFPPparser = require('../parser/RMFPPparser') //importing the RMFMonitor3parser file
 try{
   var ddsconfig = require("../../config/Zconfig.json");
@@ -11,6 +13,14 @@ var apiml_port = ddsconfig.apiml_port;
 var username = ddsconfig.apiml_username;
 var password = ddsconfig.apiml_password;
 var apiml_auth = ddsconfig.apiml_auth_type;
+
+const pool = new Pool({
+  user: 'root',
+  host: 'localhost',
+  database: 'test',
+  password: '',
+  port: 5432,
+});
 
 /**
  * RMFPPgetRequest is the Function for Sending GET Request to RMF Monitor I (Post-Processor Report).
@@ -127,6 +137,87 @@ async function apimlverification(req, fn){
     fn("OK") // Bypass API ML Authentication 
   }
 }
+
+function parseTimestamp(timeString) {
+  const [datePart, timePart]= timeString.split('-');
+  const [month, day, year]= datePart.split('/');
+  const [hour, minute, second] =timePart.split('.');
+  return new Date(year, month - 1, day, hour, minute, second);
+}
+
+//replace the existing replaceNulls function with this 
+function replaceNulls(obj) {
+  if (obj===null|| obj=== undefined|| obj ==="") {
+    return 0;
+  } else if (Array.isArray(obj)) {
+    return obj.map(replaceNulls);
+  } else if (typeof obj ==='object') {
+    const result ={};
+    for (const [key, value] of Object.entries(obj)) {
+      result[key]= replaceNulls(value);
+    }
+    return result;
+  }
+  return obj;
+}
+
+async function insertData(client,data) {
+  console.log("Starting insertData function");
+  console.log("Data received:",typeof data, Object.keys(data));
+  try {
+    for (const [rootVar, rootData] of Object.entries(data)) {
+      console.log(`Processing rootVar: ${rootVar}`);
+      for (const [ssidKey, ssidData] of Object.entries(rootData)) {
+        if (ssidKey.startsWith('Cache Subsystem Activity for SSID')) {
+          console.log(`Processing SSID: ${ssidKey}`);
+          const ssid = parseInt(ssidKey.split(' ').pop());
+          
+          //parsing timestamps
+          const timestamp =parseTimestamp(rootData.Timestamp);
+          const cacheIntervalStart = parseTimestamp(rootData['Cache Interval'].Start);
+          
+          //parsing interval duration
+          const [minutes, seconds] =rootData['Cache Interval']['Interval (mm.ss)'].split('.');
+          const cacheIntervalDuration= `${minutes || 0} minutes ${seconds || 0} seconds`;
+
+          console.log("Preparing data for INSERT query...");
+          const insertData =[
+            parseInt(rootVar),
+            rootData.Report,
+            rootData.System,
+            timestamp,
+            cacheIntervalStart,
+            cacheIntervalDuration,
+            ssid,
+            JSON.stringify(replaceNulls(ssidData['Storage Subsystem Descriptor'])),
+            JSON.stringify(replaceNulls(ssidData['Subsystem Storage and Status'])),
+            JSON.stringify(replaceNulls(ssidData['Cache Subsystem Overview'])),
+            JSON.stringify(replaceNulls(ssidData['Miscellaneous Cache Activities'])),
+            JSON.stringify(replaceNulls(ssidData['Host Adapter Activity'])),
+            JSON.stringify(replaceNulls(ssidData['Disk Activity'])),
+            JSON.stringify(replaceNulls(ssidData['Cache Subsystem Device Overview']))
+          ];
+          console.log("Data prepared:", insertData);
+
+          console.log("Executing INSERT query...");
+          await client.query(`
+            INSERT INTO cache_subsystem_activity (
+              root_variable, report, system, timestamp, cache_interval_start, cache_interval_duration,
+              ssid, storage_subsystem_descriptor, subsystem_storage_and_status, cache_subsystem_overview,
+              miscellaneous_cache_activities, host_adapter_activity, disk_activity, cache_subsystem_device_overview
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+          `, insertData);
+          console.log("INSERT query executed successfully");
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error in insertData function:",error);
+    throw error;
+  }
+  console.log("insertData function completed");
+}
+
 async function RMFIJSON(req, res, status){
   switch(status){
     case "OK" :
@@ -174,20 +265,43 @@ async function RMFIJSON(req, res, status){
           timeend = cduration[1]; //timeend from user specified duration  
       }
       //if (urlReport.length >= 3 && urlReport.slice(0,3) === "CPU") { //if user specified CPU as report name
-        RMFPPgetRequest(lpar["ddshhttptype"], lpar["ddsbaseurl"], lpar["ddsbaseport"], lpar["rmfppfilename"], urlReport, urlDate, lpar["ddsuser"], lpar["ddspwd"], lpar["ddsauth"], function (data) { //A call to the getRequestpp function made with a callback function as parameter
+        RMFPPgetRequest(lpar["ddshhttptype"], lpar["ddsbaseurl"], lpar["ddsbaseport"], lpar["rmfppfilename"], urlReport, urlDate, lpar["ddsuser"], lpar["ddspwd"], lpar["ddsauth"], async function (data) { //A call to the getRequestpp function made with a callback function as parameter
+            console.log("RMFPPgetRequest completed. Data received:", typeof data, data.length);
             if (data === "DE" || data === "NE" || data === "UA" || data === "EOUT") { 
+              console.log("Error received from RMFPPgetRequest:", data);
               var string = encodeURIComponent(`${data}`);
               res.redirect('/rmfpp/error?emsg=' + string);
             } else{
-              RMFPPparser.parse(data, function (result) { //data returned by the getRequestpp callback function is passed to bodyParserforRmfPP function
-                if (result["msg"]) { //Data Error from parser, when parser cannor parse the XML file it receives 
+              console.log("Parsing data with RMFPPparser...");
+              RMFPPparser.parse(data, async function (result) { //data returned by the getRequestpp callback function is passed to bodyParserforRmfPP function
+                console.log("RMFPPparser completed. Result:", typeof result, Object.keys(result));
+                if (result["msg"]) {
+                  console.log("Error in parsing:", result["msg"]);
                   var data = result["data"];
                   res.redirect(`/rmfpp/error?emsg=${data}`);
                 } else{
-                  res.json(result); //Express display all the result returned by the call back function
+                  console.log("Attempting to insert data into PostgreSQL...");
+                  const client = await pool.connect();
+                  try {
+                    await client.query('BEGIN');
+                    console.log("Transaction begun");
+                    await insertData(client, result);
+                    console.log("Data insertion completed");
+                    await client.query('COMMIT');
+                    console.log("Transaction committed. Data successfully inserted into the database");
+                  } catch (error) {
+                    console.error("Error during database insertion:", error);
+                    await client.query('ROLLBACK');
+                    console.log("Transaction rolled back due to error");
+                  } finally {
+                    client.release();
+                    console.log("Database client released");
+                  }
+
+                  res.json(result);
+                  console.log("Response sent to client");
                 }
-                //res.json(result); 
-            });
+              });
             }
         });
       //}
@@ -228,6 +342,7 @@ async function RMFIJSON(req, res, status){
         }}); */
       break;
     case "LOGIN FAILED" :
+      console.log("API ML Login failed");
       res.json("Login to API ML Failed");
       break;
   }
