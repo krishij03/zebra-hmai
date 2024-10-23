@@ -127,6 +127,40 @@ block scripts
                 var report = $('#rmfpp_report').val();
                 var start = $('#start').val();
                 var end = $('#end').val();
-                window.location.href =`/v1/${lpar}/rmfpp/${report}?start=${start}&end=${end}`;
+                $.ajax({
+                    url: `/v1/${lpar}/rmfpp/${report}?start=${start}&end=${end}`,
+                    method: 'GET',
+                    success: function(response) {
+                        if (response.promptUser) {
+                            if (confirm(response.message)) {
+                                // User wants to populate the database
+                                $.ajax({
+                                    url: `/v1/${lpar}/rmfpp/${report}?start=${start}&end=${end}&populateDB=true`,
+                                    method: 'GET',
+                                    success: function(data) {
+                                        console.log("Data retrieved and database populated:");
+                                        console.log(data);
+                                        alert("Database populated successfully!");
+                                        window.location.href = `/v1/${lpar}/rmfpp/${report}?start=${start}&end=${end}&populateDB=true`;
+                                    },
+                                    error: function(error) {
+                                        console.error('Error:', error);
+                                        alert("An error occurred while populating the database.");
+                                    }
+                                });
+                            } else {
+                                // User doesn't want to populate the database, just display the data
+                                window.location.href = `/v1/${lpar}/rmfpp/${report}?start=${start}&end=${end}`;
+                            }
+                        } else {
+                            // No MySQL config or data already retrieved, just display the data
+                            window.location.href = `/v1/${lpar}/rmfpp/${report}?start=${start}&end=${end}`;
+                        }
+                    },
+                    error: function(error) {
+                        console.error('Error:', error);
+                        alert("An error occurred while fetching the data.");
+                    }
+                });
             }
         }
