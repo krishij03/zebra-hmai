@@ -16,6 +16,7 @@
     - [Manual Installation](#manual-installation)
     - [Docker Installation](#docker-installation)
 - [Installing HMAI ZEBRA](#installing-hmai-zebra) 
+	- [About](#about-zebra-hmai) 
 	- [Manual Installation](#manual-installation-1) 
 	- [Docker Installation](#docker-installation-1)
 - [Configuring ZEBRA's Settings](#configuring-zebras-settings)
@@ -379,9 +380,15 @@ volumes:
 where ```[ZEBRA_PORT]```, ```[MONGO_PORT]```, ```[PROMETHEUS_PORT]```, and ```[GRAFANA_PORT]``` are your desired ports for ZEBRA, MongoDB, Prometheus, and Grafana, respectively.
 
 ## Installing HMAI ZEBRA
+### About
+As a prerequisite to using the HMAI plugin, the Hitachi Vantara software products Mainframe Analytics Recorder (MAR) and Hitachi Mainframe Analytics Interpreter (HMAI) must be installed on a mainframe LPAR connected to an Hitachi Vantara mainframe array.
 
+HMAI converts MAR records in IBM z/OS® System Management Facilities (SMF) format to comma separated value (CSV) datasets. The CSV files contain key mainframe performance information for mainframe storage resources such as CLPR, MPB, Port, Parity Group, MPRank20 and LDEV.
+
+The ZEBRA HMAI plugin includes the components to automatically retrieve HMAI CSV files from a LPAR to the HMAI On Prem server using SFTP to input the CSV files into a MySQL database. Grafana connects to the MySQL database as a Data Source and provides visualization of HMAI data using predefined dashboards.
+
+For more information on MAR and HMAI, please view [Hitachi Mainframe Analytics Interpreter - FAQs | Hitachi Vantara](https://nam04.safelinks.protection.outlook.com/?url=https%3A%2F%2Fwww.hitachivantara.com%2Fen-us%2Finsights%2Ffaq%2Fmainframe-analytics-interpreter%23accordion-6f3155a424-item-73cd91adfa&data=05%7C02%7Ckrishi.jain%40hitachivantara.com%7C03b6a9d2a3564831473108dd04cd4ed8%7C18791e1761594f52a8d4de814ca8284a%7C0%7C0%7C638672002027867250%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=bSV%2B6J640%2Bwp0sJP026%2Btj1h7k%2FWRHJCOje0qaj6dc4%3D&reserved=0 "Original URL: https://www.hitachivantara.com/en-us/insights/faq/mainframe-analytics-interpreter#accordion-6f3155a424-item-73cd91adfa. Click or tap if you trust this link.")
 ### Manual Installation
-
 1. Make sure you have the required system specifications as described.
 
 2. Install MySQL and any desired [third party software](#built-in-third-party-support) you want to integrate with ZEBRA.
