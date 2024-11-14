@@ -391,7 +391,7 @@ For more information on MAR and HMAI, please view [Hitachi Mainframe Analytics I
 ### Manual Installation
 1. Make sure you have the required system specifications as described.
 
-2. Install MySQL and any desired [third party software](#built-in-third-party-support) you want to integrate with ZEBRA.
+2. Install [MySQL](#configuring-mysql) and any desired [third party software](#built-in-third-party-support) you want to integrate with ZEBRA.
 
 3. Clone this repository with Git:
 
