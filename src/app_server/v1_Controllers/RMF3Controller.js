@@ -36,60 +36,127 @@ var apiml_auth = ddsconfig.apiml_auth_type;
     //var RMF3URL = `${ddshttp}://${baseurl}:${baseport}/gpm/${rmf3filename}?report=${urlReport}&resource=${mvsResource}`;
     var RMF3URL = `${ddshttp}://${baseurl}:${baseport}/gpm/${rmf3filename}${urlParams}`; //Dynamically create URL
     //console.log(RMF3URL);
-    if(ddsauth === 'true'){
-      axios.get(RMF3URL, {
-        auth: {
-          username: ddsid,
-          password: ddspass
+    console.log('\n=== RMF3 Request Details ===');
+    console.log('URL:', RMF3URL);
+    console.log('Auth enabled:', ddsauth);
+
+    console.log('\n=== DDS Server Configuration ===');
+    console.log('Protocol:', ddshttp);
+    console.log('Base URL:', baseurl);
+    console.log('Port:', baseport);
+    console.log('Full URL:', RMF3URL);
+
+    // Test server availability
+    const testConfig = {
+        timeout: 5000, // 5 second timeout
+        validateStatus: null // Accept all status codes
+    };
+
+    // Try a basic connection test first
+    axios.get(`${ddshttp}://${baseurl}:${baseport}`, testConfig)
+        .then(() => {
+            console.log('DDS server is reachable');
+            // Proceed with actual request
+            makeActualRequest();
+        })
+        .catch(error => {
+            console.log('\n=== Connection Test Error ===');
+            console.log('Error type:', error.code);
+            console.log('Error message:', error.message);
+            if (error.code === 'EHOSTUNREACH') {
+                fn({
+                    error: 'DDS_UNREACHABLE',
+                    message: 'Cannot reach DDS server. Please verify server address and network connectivity.',
+                    details: error.message
+                });
+            } else {
+                fn({
+                    error: 'CONNECTION_ERROR',
+                    message: 'Error connecting to DDS server',
+                    details: error.message
+                });
+            }
+        });
+
+    function makeActualRequest() {
+        if(ddsauth === 'true'){
+            const axiosConfig = {
+                maxRedirects: 0, // Prevent automatic redirects
+                validateStatus: function (status) {
+                    return status >= 200 && status < 600; // Accept all status codes for debugging
+                }
+            };
+            axios.get(RMF3URL, {
+                ...axiosConfig,
+                auth: {
+                    username: ddsid,
+                    password: ddspass
+                }
+            })
+            .then(function (response) {
+                console.log('\n=== RMF3 Response ===');
+                console.log('Status:', response.status);
+                console.log('Headers:', JSON.stringify(response.headers, null, 2));
+                
+                // Check content type
+                const contentType = response.headers['content-type'];
+                console.log('Content-Type:', contentType);
+
+                if (contentType && contentType.includes('application/json')) {
+                    console.log('Received JSON response');
+                    // Return the JSON data directly
+                    fn(response.data);
+                } else {
+                    // Original XML handling
+                    fn(response.data);
+                }
+            })
+            .catch(function (error) {
+                console.log('\n=== RMF3 Error ===');
+                console.log('Error message:', error.message);
+                if (error.response) {
+                    console.log('Error status:', error.response.status);
+                    console.log('Error headers:', JSON.stringify(error.response.headers, null, 2));
+                    console.log('Error data:', error.response.data);
+                }
+
+                try {
+                    if(parseInt(error.response.status) === 401){
+                        console.log('Authentication failed');
+                        fn("UA");
+                    } else {
+                        console.log('Other error:', error.errno);
+                        fn(error["errno"]);
+                    }
+                } catch(e) {
+                    console.log('Error parsing response:', e);
+                    fn(error["errno"]);
+                }
+            });
+        }else{
+            axios.get(RMF3URL)
+            .then(function (response) {
+                // handle success
+                fn(response.data);
+            })
+            .catch(function (error) {
+                // handle error
+                //console.log(error)
+                try{
+                    if(parseInt(error.response.status) === 401){
+                        fn("UA");
+                    }else{
+                        fn(error["errno"]);
+                    }
+                }catch(e){
+                    fn(error["errno"]);
+                }
+            })
+            .then(function () {
+                // always executed
+            });
         }
-      })
-      .then(function (response) {
-        // handle success
-        fn(response.data);
-        //console.log(response.data);
-      })
-      .catch(function (error) {
-        // handle error
-        try{
-          if(parseInt(error.response.status) === 401){
-            fn("UA");
-          }else{
-            fn(error["errno"]);
-          }
-        }catch(e){
-          fn(error["errno"]);
-        }
-        
-        //console.log(error.response.status);
-        //console.log(error);
-      })
-      .then(function () {
-        // always executed
-      });
-    }else{
-      axios.get(RMF3URL)
-      .then(function (response) {
-        // handle success
-        fn(response.data);
-      })
-      .catch(function (error) {
-        // handle error
-        //console.log(error)
-        try{
-          if(parseInt(error.response.status) === 401){
-            fn("UA");
-          }else{
-            fn(error["errno"]);
-          }
-        }catch(e){
-          fn(error["errno"]);
-        }
-      })
-      .then(function () {
-        // always executed
-      });
-  
-    } 
+    }
 }
 
 module.exports.getDDS = RMFMonitor3getRequest;
@@ -306,19 +373,443 @@ async function RMFIIIJSON(req, res, status){
   }
 }
 
-module.exports.RMFIII = async function (req, res) {
-  var status = "OK"; // A variable to track function flow status
-    if(req.params.lpar){
-        if(req.params.apiml){
-          await apimlverification(req, function(result){
-            status = result;
-            RMFIIIJSON(req, res, status);
-          })   
-        }else{
-          RMFIIIJSON(req, res, status);
+// Generic formatter for all RMF Monitor III reports
+function formatRMF3Report(jsonData) {
+    try {
+        // Get the first report
+        const report = jsonData.report[0];
+        if (!report) {
+            console.log('No report data found');
+            return jsonData;
         }
+
+        // Format captions into a more readable object
+        const captions = {};
+        if (report.caption && report.caption.var) {
+            report.caption.var.forEach(item => {
+                if (item.name && item.value) {
+                    captions[item.name] = item.value;
+                }
+            });
+        }
+
+        // Create column mapping
+        const columnMap = {};
+        if (report.columnHeaders && report.columnHeaders.col) {
+            report.columnHeaders.col.forEach((col, index) => {
+                columnMap[index] = col.value;
+            });
+        }
+
+        // Format rows, removing empty entries
+        const formattedRows = [];
+        if (report.row) {
+            report.row.forEach(row => {
+                if (row.col) {
+                    const formattedRow = {};
+                    row.col.forEach((value, index) => {
+                        const columnName = columnMap[index];
+                        if (value !== "") { // Only include non-empty values
+                            formattedRow[columnName] = value;
+                        }
+                    });
+                    if (Object.keys(formattedRow).length > 0) { // Only include rows with data
+                        formattedRow.refno = row.refno;
+                        formattedRows.push(formattedRow);
+                    }
+                }
+            });
+        }
+
+        // Build the final response
+        const formattedResponse = {
+            title: report.metric.description,
+            reportId: report.metric.id,
+            timeData: {
+                start: report.timeData.displayStart.value,
+                end: report.timeData.displayEnd.value,
+                samples: report.timeData.numSamples,
+                interval: {
+                    value: report.timeData.gathererInterval.value,
+                    unit: report.timeData.gathererInterval.unit
+                }
+            },
+            server: jsonData.server,
+            resource: report.resource,
+            captions: captions,
+            columns: Object.values(columnMap),
+            data: formattedRows
+        };
+
+        return formattedResponse;
+    } catch (error) {
+        console.log('Error formatting RMF3 report:', error);
+        return jsonData; // Return original data if formatting fails
+    }
+}
+
+// Modify the RMFIII function to handle both formats
+module.exports.RMFIII = async function (req, res) {
+    console.log('\n=== RMFIII Request ===');
+    console.log('LPAR:', req.params.lpar);
+    console.log('Report:', req.params.report);
+
+    if(!req.params.lpar) {
+        return res.status(400).json({
+            error: 'MISSING_LPAR',
+            message: 'LPAR parameter is required'
+        });
+    }
+
+    const lpar = ddsconfig["dds"][req.params.lpar];
+    if(!lpar) {
+        return res.status(404).json({
+            error: 'INVALID_LPAR',
+            message: `LPAR ${req.params.lpar} not found in configuration`
+        });
+    }
+
+    var urlReport = req.params.report;
+    var urlResource = lpar["mvsResource"];
+    var ulrParm; //variable for parm parameter in the User Specified URL
+    var urlLpar_parms; //variable for lpar_parms parameter in the User Specified URL
+    var urlJobParm; //variable for job parameter in the User Specified URL
+
+    if (req.query.parm) {
+        ulrParm = (req.query.parm).toUpperCase();
+    }
+    if (req.query.lpar_parms) {
+        urlLpar_parms = (req.query.lpar_parms).toUpperCase();
+    }
+    if (req.query.job) {
+        urlJobParm = (req.query.job).toUpperCase();
+    }
+    if (req.query.resource) {
+        urlResource = req.query.resource;
+    }
+
+    // Handle specific report types
+    if (urlReport.toUpperCase() === "CPC") {
+        handleCPCReport(lpar, urlReport, urlResource, ulrParm, urlLpar_parms, res);
+    } else if (urlReport.toUpperCase() === "PROC") {
+        handlePROCReport(lpar, urlReport, urlResource, ulrParm, urlJobParm, res);
+    } else if (urlReport.toUpperCase() === "USAGE") {
+        handleUSAGEReport(lpar, urlReport, urlResource, ulrParm, urlJobParm, res);
+    } else {
+        // Handle other reports
+        handleGenericReport(lpar, urlReport, urlResource, res);
     }
 };
+
+function handleCPCReport(lpar, report, resource, parm, lpar_parms, res) {
+    RMFMonitor3getRequest(
+        lpar["ddshhttptype"],
+        lpar["ddsbaseurl"],
+        lpar["ddsbaseport"],
+        lpar["rmf3filename"],
+        {report: report, resource: resource},
+        lpar["ddsuser"],
+        lpar["ddspwd"],
+        lpar["ddsauth"],
+        function(data) {
+            handleResponse(data, 'CPC', {parm, lpar_parms}, res);
+        }
+    );
+}
+
+function handlePROCReport(lpar, report, resource, parm, job, res) {
+    RMFMonitor3getRequest(
+        lpar["ddshhttptype"],
+        lpar["ddsbaseurl"],
+        lpar["ddsbaseport"],
+        lpar["rmf3filename"],
+        {report: report, resource: resource},
+        lpar["ddsuser"],
+        lpar["ddspwd"],
+        lpar["ddsauth"],
+        function(data) {
+            handleResponse(data, 'PROC', {parm, job}, res);
+        }
+    );
+}
+
+function handleUSAGEReport(lpar, report, resource, parm, job, res) {
+    RMFMonitor3getRequest(
+        lpar["ddshhttptype"],
+        lpar["ddsbaseurl"],
+        lpar["ddsbaseport"],
+        lpar["rmf3filename"],
+        {report: report, resource: resource},
+        lpar["ddsuser"],
+        lpar["ddspwd"],
+        lpar["ddsauth"],
+        function(data) {
+            handleResponse(data, 'USAGE', {parm, job}, res);
+        }
+    );
+}
+
+function handleGenericReport(lpar, report, resource, res) {
+    RMFMonitor3getRequest(
+        lpar["ddshhttptype"],
+        lpar["ddsbaseurl"],
+        lpar["ddsbaseport"],
+        lpar["rmf3filename"],
+        {report: report, resource: resource},
+        lpar["ddsuser"],
+        lpar["ddspwd"],
+        lpar["ddsauth"],
+        function(data) {
+            handleResponse(data, 'GENERIC', {}, res);
+        }
+    );
+}
+
+function handleResponse(data, reportType, params, res) {
+    // Handle error responses
+    if(data === "DE" || data === "NE" || data === "UA" || data === "EOUT") {
+        var string = encodeURIComponent(`${data}`);
+        return res.redirect('/rmfm3/error?emsg=' + string);
+    }
+
+    // Handle JSON response (z/OS 3.1+)
+    if (typeof data === 'object') {
+        try {
+            const formattedData = formatRMF3Report(data);
+            
+            // Apply any report-specific formatting
+            switch(reportType) {
+                case 'CPC':
+                    if (params.parm || params.lpar_parms) {
+                        return handleCPCParams(formattedData, params.parm, params.lpar_parms, res);
+                    }
+                    break;
+                case 'PROC':
+                    if (params.parm || params.job) {
+                        return handlePROCParams(formattedData, params.parm, params.job, res);
+                    }
+                    break;
+                case 'USAGE':
+                    if (params.parm || params.job) {
+                        return handleUSAGEParams(formattedData, params.parm, params.job, res);
+                    }
+                    break;
+            }
+            
+            res.json(formattedData);
+        } catch (error) {
+            console.log('Error formatting JSON response:', error);
+            res.redirect(`/rmfm3/error?emsg=Error formatting response`);
+        }
+    } 
+    // Handle XML response (pre-z/OS 3.1)
+    else {
+        RMFMonitor3parser.RMF3bodyParser(data, function(result) {
+            if(result["msg"]) {
+                res.redirect(`/rmfm3/error?emsg=${result["data"]}`);
+            } else {
+                switch(reportType) {
+                    case 'CPC':
+                        if (params.parm || params.lpar_parms) {
+                            return handleCPCParams(result, params.parm, params.lpar_parms, res);
+                        }
+                        break;
+                    case 'PROC':
+                        if (params.parm || params.job) {
+                            return handlePROCParams(result, params.parm, params.job, res);
+                        }
+                        break;
+                    case 'USAGE':
+                        if (params.parm || params.job) {
+                            return handleUSAGEParams(result, params.parm, params.job, res);
+                        }
+                        break;
+                }
+                res.json(result);
+            }
+        });
+    }
+}
+
+// Add helper functions for parameter handling
+function handleCPCParams(data, parm, lpar_parms, res) {
+    try {
+        let jsonResponse = {};
+        jsonResponse.timeData = data.timeData;
+        
+        if (parm === undefined && lpar_parms === undefined) {
+            return res.json(data);
+        } 
+        
+        if (lpar_parms === undefined) {
+            if (parm === "ALL") {
+                jsonResponse.captions = data.captions;
+            } else {
+                // Check if parm exists in captions
+                if (data.captions && data.captions[parm]) {
+                    jsonResponse[parm] = data.captions[parm];
+                } else {
+                    // Look for parm in data rows
+                    const col = [];
+                    data.data.forEach(row => {
+                        if (row["CPCPPNAM"] && row[parm]) {
+                            col.push({
+                                "CPCPPNAM": row["CPCPPNAM"],
+                                [parm]: row[parm]
+                            });
+                        }
+                    });
+                    jsonResponse.lpar = col;
+                }
+            }
+        } else {
+            if (parm === "ALL") {
+                jsonResponse.captions = data.captions;
+                if (lpar_parms === "ALL_CP") {
+                    jsonResponse.lpar = data.data;
+                } else {
+                    jsonResponse.lpar = data.data.find(row => row["CPCPPNAM"] === lpar_parms);
+                }
+            } else if (parm === undefined) {
+                if (lpar_parms === "ALL_CP") {
+                    jsonResponse.lpar = data.data;
+                } else {
+                    jsonResponse.lpar = data.data.find(row => row["CPCPPNAM"] === lpar_parms);
+                }
+            } else {
+                const col = [];
+                data.data.forEach(row => {
+                    if (row["CPCPPNAM"] && row[parm]) {
+                        col.push({
+                            "CPCPPNAM": row["CPCPPNAM"],
+                            [parm]: row[parm]
+                        });
+                    }
+                });
+                jsonResponse.lpar_parm = col;
+                
+                if (lpar_parms === "ALL_CP") {
+                    jsonResponse.lpar = data.data;
+                } else {
+                    jsonResponse.lpar = data.data.find(row => row["CPCPPNAM"] === lpar_parms);
+                }
+            }
+        }
+        
+        res.json(jsonResponse);
+    } catch (error) {
+        console.log('Error handling CPC parameters:', error);
+        res.redirect(`/rmfm3/error?emsg=Error processing CPC parameters`);
+    }
+}
+
+function handlePROCParams(data, parm, job, res) {
+    try {
+        let jsonResponse = {};
+        jsonResponse.timeData = data.timeData;
+        
+        if (parm === undefined && job === undefined) {
+            return res.json(data);
+        }
+        
+        if (job === undefined) {
+            const col = [];
+            data.data.forEach(row => {
+                if (row["PRCPJOB"] && row[parm]) {
+                    col.push({
+                        "PRCPJOB": row["PRCPJOB"],
+                        [parm]: row[parm]
+                    });
+                }
+            });
+            jsonResponse.job = col;
+        } else {
+            if (parm === undefined) {
+                if (job === "ALL_JOBS") {
+                    jsonResponse.job = data.data;
+                } else {
+                    jsonResponse.job = data.data.find(row => row["PRCPJOB"] === job);
+                }
+            } else {
+                const col = [];
+                data.data.forEach(row => {
+                    if (row["PRCPJOB"] && row[parm]) {
+                        col.push({
+                            "PRCPJOB": row["PRCPJOB"],
+                            [parm]: row[parm]
+                        });
+                    }
+                });
+                jsonResponse.job_parm = col;
+                
+                if (job === "ALL_JOBS") {
+                    jsonResponse.job = data.data;
+                } else {
+                    jsonResponse.job = data.data.find(row => row["PRCPJOB"] === job);
+                }
+            }
+        }
+        
+        res.json(jsonResponse);
+    } catch (error) {
+        console.log('Error handling PROC parameters:', error);
+        res.redirect(`/rmfm3/error?emsg=Error processing PROC parameters`);
+    }
+}
+
+function handleUSAGEParams(data, parm, job, res) {
+    try {
+        let jsonResponse = {};
+        jsonResponse.timeData = data.timeData;
+        
+        if (parm === undefined && job === undefined) {
+            return res.json(data);
+        }
+        
+        if (job === undefined) {
+            const col = [];
+            data.data.forEach(row => {
+                if (row["JUSPJOB"] && row[parm]) {
+                    col.push({
+                        "JUSPJOB": row["JUSPJOB"],
+                        [parm]: row[parm]
+                    });
+                }
+            });
+            jsonResponse.job = col;
+        } else {
+            if (parm === undefined) {
+                if (job === "ALL_JOBS") {
+                    jsonResponse.job = data.data;
+                } else {
+                    jsonResponse.job = data.data.find(row => row["JUSPJOB"] === job);
+                }
+            } else {
+                const col = [];
+                data.data.forEach(row => {
+                    if (row["JUSPJOB"] && row[parm]) {
+                        col.push({
+                            "JUSPJOB": row["JUSPJOB"],
+                            [parm]: row[parm]
+                        });
+                    }
+                });
+                jsonResponse.job_parm = col;
+                
+                if (job === "ALL_JOBS") {
+                    jsonResponse.job = data.data;
+                } else {
+                    jsonResponse.job = data.data.find(row => row["JUSPJOB"] === job);
+                }
+            }
+        }
+        
+        res.json(jsonResponse);
+    } catch (error) {
+        console.log('Error handling USAGE parameters:', error);
+        res.redirect(`/rmfm3/error?emsg=Error processing USAGE parameters`);
+    }
+}
 
 /**
  * DisplayCPC function handles the processing of Monitor III CPC report based on parameters specicied by User in the URL(e.g /rmfm3?report=CPC).
@@ -651,34 +1142,3 @@ function displayUSAGE(arg, job, ddshhttptype, ddsbaseurl, ddsbaseport, rmf3filen
     }
   });
 };
-
-
-
-
-
-
-/*if(req.params.file === "*" && req.params.resource === "*"){
-  RMFMonitor3getRequest(lpar["ddshhttptype"], lpar["ddsbaseurl"], lpar["ddsbaseport"], lpar["rmf3filename"], req.params.report, lpar["mvsResource"], lpar["ddsuser"], lpar["ddspwd"], lpar["ddsauth"], function (data) {
-    RMFMonitor3parser.RMF3bodyParser(data, function (result) {
-        res.json(result)
-    });
-  });
-}else if(req.params.file === "*"){
-  RMFMonitor3getRequest(lpar["ddshhttptype"], lpar["ddsbaseurl"], lpar["ddsbaseport"], lpar["rmf3filename"], req.params.report, req.params.resource, lpar["ddsuser"], lpar["ddspwd"], lpar["ddsauth"], function (data) {
-    RMFMonitor3parser.RMF3bodyParser(data, function (result) {
-        res.json(result)
-    });
-  });
-}else if(req.params.resource === "*"){
-  RMFMonitor3getRequest(lpar["ddshhttptype"], lpar["ddsbaseurl"], lpar["ddsbaseport"], req.params.file, req.params.report, lpar["mvsResource"], lpar["ddsuser"], lpar["ddspwd"], lpar["ddsauth"], function (data) {
-    RMFMonitor3parser.RMF3bodyParser(data, function (result) {
-        res.json(result)
-    });
-  });
-}else{
-  RMFMonitor3getRequest(lpar["ddshhttptype"], lpar["ddsbaseurl"], lpar["ddsbaseport"], req.params.file, req.params.report, req.params.resource, lpar["ddsuser"], lpar["ddspwd"], lpar["ddsauth"], function (data) {
-    RMFMonitor3parser.RMF3bodyParser(data, function (result) {
-        res.json(result)
-    });
-  });
-} */

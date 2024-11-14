@@ -7,7 +7,17 @@ var rmfppcontroller = require('../v1_Controllers/RMFPPController');
 
 router.get('/:lpar/rmf',  rmf3controller.RMFIIImetrics);
 
-router.get('/:lpar/rmf3/:report',  rmf3controller.RMFIII);
+router.get('/:lpar/rmf3/:report', function(req, res, next) {
+  // Set headers to accept both JSON and XML
+  res.format({
+    'application/json': function() {
+      rmf3controller.RMFIII(req, res);
+    },
+    'default': function() {
+      rmf3controller.RMFIII(req, res);
+    }
+  });
+});
 
 router.get('/:lpar/rmf3/:report/:apiml',  rmf3controller.RMFIII);
 

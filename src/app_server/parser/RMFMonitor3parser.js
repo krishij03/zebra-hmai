@@ -8,8 +8,27 @@ var fs = require('fs'); //Import fs module
  * @param {JSON} fn - Callback function that returns parsed JSON
  */
 module.exports.RMF3bodyParser = function (data, fn) {
+    console.log('\n=== RMF3 Parser ===');
+    console.log('Parsing RMF3 data');
+    
+    if (!data) {
+      console.log('Error: Received empty data');
+      return fn({msg: 'Err', error: 'Empty data received', data: data});
+    }
+
     parser.parseString(data, function (err, result) {
+        if (err) {
+          console.log('Error: XML parsing failed:', err);
+          return fn({msg: 'Err', error: err, data: data});
+        }
+
         try {
+            console.log('Parsing XML structure');
+            if (!result || !result.ddsml || !result.ddsml.report) {
+              console.log('Error: Invalid XML structure');
+              return fn({msg: 'Err', error: 'Invalid XML structure', data: data});
+            }
+
             //Variables initialization from XML attributes
             var timestart = result['ddsml']['report'][0]['time-data'][0]['display-start'][0]['_']; //Initialize timestart variable
             var timeend = result['ddsml']['report'][0]['time-data'][0]['display-end'][0]['_']; //Initialize timeend variable
@@ -69,18 +88,11 @@ module.exports.RMF3bodyParser = function (data, fn) {
             }
             fn(parsedJSON); //return parsed JSON
         } catch (err) {
+            console.log('Error during parsing:', err);
+            console.log('Raw data:', data);
             fn({msg: 'Err', error: err, data: data});
-            /*if(Object.keys(err).length === 0){
-                fn("DE")
-            }else{
-                fn(err);
-            }*/
-            //fn("Parsing RMF III XML Failed! Check Connection to DDS server");
-            
         }
-
     });
-
 }
 
 module.exports.RMF3fieldParser = function (data, fn) {
