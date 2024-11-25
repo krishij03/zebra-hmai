@@ -4,7 +4,7 @@ var path = require('path');
 var HMRE_MEMORY_DIR = path.join(__dirname, '..', '..', 'config', 'hmreMemory');
 
 function ensureDirectoryExists(directory, callback) {
-    fs.mkdir(directory, function(err) {
+    fs.mkdir(directory, { recursive: true }, function(err) {
         if (err && err.code !== 'EEXIST') {
             callback(err);
         } else {
@@ -59,12 +59,38 @@ function updateLparData(lpar, newData, callback) {
         if (err) {
             return callback(err);
         }
-        var updatedData = Object.assign({}, currentData, newData);
-        writeLparData(lpar, updatedData, function(writeErr) {
+        
+        // Merge the new data with existing data
+        const mergedData = { ...currentData };
+        
+        // For each directory in newData
+        Object.entries(newData).forEach(([dirName, dirData]) => {
+            if (mergedData[dirName]) {
+                // If directory exists, merge the metrics without duplicates
+                const existingMetrics = mergedData[dirName].processedMetrics || [];
+                const newMetrics = dirData.processedMetrics || [];
+                
+                mergedData[dirName] = {
+                    timestamp: dirData.timestamp,
+                    processedMetrics: [...new Set([...existingMetrics, ...newMetrics])]
+                };
+                
+                console.log(`Updated metrics for ${dirName}:`, mergedData[dirName].processedMetrics);
+            } else {
+                // If directory is new, add it with its metrics
+                mergedData[dirName] = {
+                    timestamp: dirData.timestamp,
+                    processedMetrics: dirData.processedMetrics || []
+                };
+                console.log(`Added new directory ${dirName} with metrics:`, mergedData[dirName].processedMetrics);
+            }
+        });
+
+        writeLparData(lpar, mergedData, function(writeErr) {
             if (writeErr) {
                 return callback(writeErr);
             }
-            callback(null, updatedData);
+            callback(null, mergedData);
         });
     });
 }

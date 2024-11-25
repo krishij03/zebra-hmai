@@ -131,15 +131,16 @@ async function loadDataFromFTPToMySQL(ftpClient, mysqlConnection, remotePath, ta
 
 async function processDirectory(ftpClient, mysqlConnection, dirPath, lpar, metrics) {
     console.log(`Processing directory: ${dirPath}`);
+    const processedMetrics = [];
     
     try {
         await promisifyFtpCommand(ftpClient, 'cwd', dirPath);
         const files = await promisifyFtpCommand(ftpClient, 'list');
 
         for (const file of files) {
-            if (file.type === '-' && (file.name === 'hmrecsvs.csv' || file.name === 'hmrecsvd.csv')) {
-                const tableName = file.name.split('.')[0];
-                if (metrics.includes(tableName)) {
+            if (file.type === '-' && file.name.endsWith('.csv')) {
+                const tableName = getTableNameFromFileName(file.name);
+                if (tableName && metrics.includes(tableName)) {
                     try {
                         await loadDataFromFTPToMySQL(
                             ftpClient,
@@ -148,6 +149,8 @@ async function processDirectory(ftpClient, mysqlConnection, dirPath, lpar, metri
                             tableName,
                             tableHeaders[tableName]
                         );
+                        processedMetrics.push(tableName);
+                        console.log(`Successfully processed metric ${tableName} from ${file.name}`);
                     } catch (error) {
                         console.error(`Error processing ${file.name}:`, error);
                     }
@@ -156,7 +159,15 @@ async function processDirectory(ftpClient, mysqlConnection, dirPath, lpar, metri
         }
     } catch (error) {
         console.error(`Error processing directory ${dirPath}:`, error);
+    } finally {
+        try {
+            await promisifyFtpCommand(ftpClient, 'cwd', config.dds[lpar].hmre.ftp.directory);
+        } catch (error) {
+            console.error(`Error changing back to base directory:`, error);
+        }
     }
+    
+    return processedMetrics;
 }
 
 async function checkForNewFiles(ftpClient, mysqlConnection, startDate, endDate, lpar, metrics) {
@@ -180,33 +191,64 @@ async function checkForNewFiles(ftpClient, mysqlConnection, startDate, endDate, 
             if (item.type !== 'd') return false;
             const dirDate = parseDirName(item.name);
             if (!dirDate) return false;
-            const isNewDir = !visitedDirs[item.name];
-            return isNewDir && dirDate >= startDateTime && dirDate <= endDateTime;
+            
+            // Check if directory exists in memory and if all requested metrics are processed
+            const dirInfo = visitedDirs[item.name];
+            const needsProcessing = !dirInfo || 
+                                  !dirInfo.processedMetrics || 
+                                  metrics.some(metric => !dirInfo.processedMetrics.includes(metric));
+
+            // Only include directory if it needs processing and is within date range
+            return needsProcessing && dirDate >= startDateTime && dirDate <= endDateTime;
         });
 
-        console.log(`Found ${newDirs.length} new directories to process for ${lpar}`);
+        console.log(`Found ${newDirs.length} directories to process for ${lpar}`);
 
         for (const dir of newDirs) {
             const fullPath = path.join(config.dds[lpar].hmre.ftp.directory, dir.name);
             try {
-                await processDirectory(ftpClient, mysqlConnection, fullPath, lpar, metrics);
-                const dirDate = parseDirName(dir.name);
-                const updateData = { [dir.name]: dirDate.toISOString() };
-                await new Promise((resolve, reject) => {
-                    hmreJSONcontroller.updateLparData(lpar, updateData, (updateErr, updatedData) => {
-                        if (updateErr) reject(updateErr);
-                        else {
-                            console.log('Processed and updated ' + lpar + '.json with ' + dir.name);
-                            resolve(updatedData);
+                // Get existing processed metrics for this directory
+                const existingDirInfo = visitedDirs[dir.name] || {};
+                const existingProcessedMetrics = existingDirInfo.processedMetrics || [];
+
+                // Only process metrics that haven't been processed yet
+                const metricsToProcess = metrics.filter(metric => 
+                    !existingProcessedMetrics.includes(metric)
+                );
+
+                if (metricsToProcess.length > 0) {
+                    console.log(`Processing directory ${dir.name} for metrics:`, metricsToProcess);
+                    const processedMetrics = await processDirectory(ftpClient, mysqlConnection, fullPath, lpar, metricsToProcess);
+                    const dirDate = parseDirName(dir.name);
+
+                    // Combine existing and newly processed metrics
+                    const allProcessedMetrics = [...new Set([...existingProcessedMetrics, ...processedMetrics])];
+                    
+                    const updateData = {
+                        [dir.name]: {
+                            timestamp: dirDate.toISOString(),
+                            processedMetrics: allProcessedMetrics
                         }
+                    };
+                    
+                    await new Promise((resolve, reject) => {
+                        hmreJSONcontroller.updateLparData(lpar, updateData, (updateErr, updatedData) => {
+                            if (updateErr) reject(updateErr);
+                            else {
+                                console.log(`Processed and updated ${lpar}.json with ${dir.name}, metrics: ${processedMetrics.join(', ')}`);
+                                resolve(updatedData);
+                            }
+                        });
                     });
-                });
+                } else {
+                    console.log(`Skipping directory ${dir.name} - all requested metrics already processed`);
+                }
             } catch (error) {
                 console.error('Error processing directory ' + dir.name + ' for ' + lpar + ':', error);
             }
         }
        
-        console.log(`Finished processing ${newDirs.length} new directories for ${lpar}`);
+        console.log(`Finished processing ${newDirs.length} directories for ${lpar}`);
         return newDirs.length;
     } catch (error) {
         console.error('Error in checkForNewFiles:', error);
@@ -289,7 +331,7 @@ async function startHMRE(req, res) {
     }
 }
 
-function startContinuousMonitoring(lpar, metrics) {
+async function startContinuousMonitoring(lpar, metrics) {
     const checkInterval = parseInt(config.dds[lpar].hmre.checkInterval);
 
     monitoringIntervals[lpar] = setInterval(async () => {
@@ -323,9 +365,12 @@ function startContinuousMonitoring(lpar, metrics) {
                 });
             });
 
-            const lastProcessedDate = Object.keys(visitedDirs).length > 0
-                ? new Date(Math.max(...Object.values(visitedDirs).map(d => new Date(d))))
-                : runningProcesses[lpar].startDate;
+            // Find the most recent timestamp
+            let lastProcessedDate = runningProcesses[lpar].startDate;
+            if (Object.keys(visitedDirs).length > 0) {
+                lastProcessedDate = new Date(Math.max(...Object.values(visitedDirs)
+                    .map(dirInfo => new Date(dirInfo.timestamp))));
+            }
 
             await checkForNewFiles(ftpClient, mysqlConnection, lastProcessedDate, null, lpar, metrics);
 
@@ -335,7 +380,7 @@ function startContinuousMonitoring(lpar, metrics) {
             if (mysqlConnection) await mysqlConnection.end();
             if (ftpClient) ftpClient.end();
         }
-    }, checkInterval * 60000);
+    }, checkInterval * 60000); // Convert minutes to milliseconds
 }
 
 async function clearDatabase(req, res) {
@@ -408,6 +453,14 @@ function getRunningProcesses(req, res) {
         };
     }
     res.json(runningProcessesInfo);
+}
+
+function getTableNameFromFileName(fileName) {
+    // For HMRE files, they are named hmrecsvs.csv or hmrecsvd.csv
+    const baseName = fileName.toLowerCase();
+    if (baseName === 'hmrecsvs.csv') return 'hmrecsvs';
+    if (baseName === 'hmrecsvd.csv') return 'hmrecsvd';
+    return null;
 }
 
 module.exports = {
