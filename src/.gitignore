@@ -30,3 +30,5 @@ src/nodemon.json
 
 package-lock.json
 config/hmaiMemory
+config/hmreMemory
+config/dcolMemory

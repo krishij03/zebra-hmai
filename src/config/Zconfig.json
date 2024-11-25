@@ -50,6 +50,32 @@
 				"checkInterval": "1",
 				"defaultStartDate": "2024-08-20",
 				"continuousMonitoring": true
+			},
+			"hmre": {
+				"ftp": {
+					"directory": "/u/hmre/hmrecsv"
+				},
+				"mysql": {
+					"host": "localhost",
+					"user": "defaultuser",
+					"password": "defaultpassword"
+				},
+				"checkInterval": "1",
+				"defaultStartDate": "2024-08-20",
+				"continuousMonitoring": true
+			},
+			"dcol": {
+				"ftp": {
+					"directory": "/u/hmaidcol"
+				},
+				"mysql": {
+					"host": "localhost",
+					"user": "defaultuser",
+					"password": "defaultpassword"
+				},
+				"checkInterval": "1",
+				"defaultStartDate": "2024-08-20",
+				"continuousMonitoring": true
 			}
 		}
 	},
