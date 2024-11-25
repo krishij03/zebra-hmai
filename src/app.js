@@ -109,6 +109,8 @@ var staticRouter = require('./app_server/routes/staticXMLRouter');
 var v1Router = require('./app_server/routes/v1Router');
 const hmaiRouter = require('./app_server/routes/hmaiRouter');
 const { exit } = require('process');
+const dcolRouter = require('./app_server/routes/dcolRouter');
+const hmreRouter = require('./app_server/routes/hmreRouter');
 
 var app = express();
 
@@ -145,6 +147,8 @@ app.use('/static', staticRouter);
 app.use('/v1/metrics', metricRouter);
 app.use('/rmfpp', rmfppRouter);
 app.use('/v1', v1Router);
+app.use('/dcol', dcolRouter);
+app.use('/hmre', hmreRouter);
 
 app.use(express.static('uploads'));
 

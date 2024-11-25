@@ -1,0 +1,218 @@
+$(document).ready(function() {
+    console.log("hmre.js loaded");
+    let runningProcesses = {};
+
+    // Select All functionality
+    $('#select-all-metrics').change(function() {
+        $('input[name="metrics"]').prop('checked', $(this).prop('checked'));
+    });
+
+    // Update Select All checkbox state when individual metrics are clicked
+    $('input[name="metrics"]').change(function() {
+        if($('input[name="metrics"]:checked').length == $('input[name="metrics"]').length) {
+            $('#select-all-metrics').prop('checked', true);
+        } else {
+            $('#select-all-metrics').prop('checked', false);
+        }
+    });
+
+    function getSelectedLPAR() {
+        return $('#lpar').val();
+    }
+
+    function updateEndDateVisibility() {
+        if ($('#continuous-monitoring').is(':checked')) {
+            $('#end-date-container').hide();
+        } else {
+            $('#end-date-container').show();
+        }
+    }
+
+    function updateStartButtonState(lpar) {
+        const startButton = $('#start-hmre');
+        const stopButton = $('#stop-hmre');
+        if (runningProcesses[lpar] && runningProcesses[lpar].isRunning) {
+            startButton.prop('disabled', true).text('Running...');
+            if (runningProcesses[lpar].continuousMonitoring) {
+                stopButton.show();
+            } else {
+                stopButton.hide();
+            }
+        } else {
+            startButton.prop('disabled', false).text('Start');
+            stopButton.hide();
+        }
+    }
+
+    $('#lpar').change(function() {
+        const selectedLPAR = $(this).val();
+        updateStartButtonState(selectedLPAR);
+        updateLPARFields();
+    });
+
+    function checkLPARSelected() {
+        const lpar = getSelectedLPAR();
+        if (lpar === 'Select LPAR' || !lpar) {
+            alert('Please select an LPAR before proceeding.');
+            return false;
+        }
+        return true;
+    }
+
+    function updateLPARFields() {
+        const selectedLPAR = getSelectedLPAR();
+        if (selectedLPAR && lparConfig[selectedLPAR] && lparConfig[selectedLPAR].hmai) {
+            const hmaiConfig = lparConfig[selectedLPAR].hmai;
+            if (hmaiConfig.defaultStartDate) {
+                $('#hmre-start-date').val(hmaiConfig.defaultStartDate);
+            }
+            if (hmaiConfig.continuousMonitoring !== undefined) {
+                $('#continuous-monitoring').prop('checked', hmaiConfig.continuousMonitoring);
+            }
+            updateEndDateVisibility();
+        }
+    }
+
+    updateLPARFields();
+
+    function getSelectedMetrics() {
+        return $('input[name="metrics"]:checked').map(function() {
+            return $(this).val();
+        }).get();
+    }
+
+    $('#continuous-monitoring').change(function() {
+        updateEndDateVisibility();
+    });
+
+    $('#start-hmre').click(function() {
+        if (!checkLPARSelected()) return;
+
+        const lpar = getSelectedLPAR();
+        if (runningProcesses[lpar] && runningProcesses[lpar].isRunning) {
+            alert(`HMRE process is already running for ${lpar}`);
+            return;
+        }
+
+        const selectedMetrics = getSelectedMetrics();
+        if (selectedMetrics.length === 0) {
+            alert("Please select at least one metric before starting the process.");
+            return;
+        }
+
+        var startDate = $('#hmre-start-date').val();
+        var endDate = $('#hmre-end-date').val();
+        var continuousMonitoring = $('#continuous-monitoring').is(':checked');
+
+        runningProcesses[lpar] = { isRunning: true, continuousMonitoring: continuousMonitoring };
+        updateStartButtonState(lpar);
+
+        $.ajax({
+            url: '/hmre/start',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ 
+                startDate: startDate, 
+                endDate: endDate, 
+                lpar: lpar,
+                continuousMonitoring: continuousMonitoring,
+                metrics: selectedMetrics
+            }),
+            success: function(data) {
+                if (data.success) {
+                    if (continuousMonitoring) {
+                        alert(`HMRE process started successfully for ${lpar} and is now running continuously.`);
+                    } else {
+                        alert(`HMRE process completed successfully for ${lpar}.`);
+                        runningProcesses[lpar].isRunning = false;
+                    }
+                } else {
+                    alert('HMRE script execution failed: ' + data.message);
+                    runningProcesses[lpar].isRunning = false;
+                }
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                console.error('HMRE start error:', textStatus, errorThrown);
+                runningProcesses[lpar].isRunning = false;
+            },
+            complete: function() {
+                updateStartButtonState(lpar);
+            }
+        });
+    });
+
+    $('#stop-hmre').click(function() {
+        const lpar = getSelectedLPAR();
+        if (runningProcesses[lpar] && runningProcesses[lpar].isRunning) {
+            $.ajax({
+                url: '/hmre/stop-monitoring',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ lpar: lpar }),
+                success: function(data) {
+                    if (data.success) {
+                        delete runningProcesses[lpar];
+                        updateStartButtonState(lpar);
+                        alert(`Stopped HMRE process for ${lpar}`);
+                    } else {
+                        alert('Failed to stop HMRE process: ' + data.message);
+                    }
+                },
+                error: function(jqXHR, textStatus, errorThrown) {
+                    console.error('Error stopping HMRE process:', textStatus, errorThrown);
+                    alert('An error occurred while stopping the HMRE process');
+                }
+            });
+        } else {
+            alert(`No running HMRE process for ${lpar}`);
+        }
+    });
+
+    $('#clear-db').click(function() {
+        if (!checkLPARSelected()) return;
+    
+        if (confirm('Are you sure you want to clear all data from the database and HMRE memory?')) {
+            var lpar = getSelectedLPAR();
+            $.ajax({
+                url: '/hmre/clear-db',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ lpar: lpar }),
+                success: function(data) {
+                    if (data.success) {
+                        alert('Database and HMRE memory cleared successfully: ' + data.message);
+                        if (runningProcesses[lpar]) {
+                            delete runningProcesses[lpar];
+                            updateStartButtonState(lpar);
+                        }
+                    } else {
+                        alert('Failed to clear database and HMRE memory: ' + data.message);
+                    }
+                },
+                error: function(jqXHR, textStatus, errorThrown) {
+                    console.error('Error:', textStatus, errorThrown);
+                    alert('An error occurred while clearing the database and HMRE memory');
+                }
+            });
+        }
+    });
+
+    function fetchRunningProcesses() {
+        $.ajax({
+            url: '/hmre/running-processes',
+            method: 'GET',
+            success: function(data) {
+                runningProcesses = data;
+                updateStartButtonState(getSelectedLPAR());
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                console.error('Error fetching running processes:', textStatus, errorThrown);
+                runningProcesses = {};
+                updateStartButtonState(getSelectedLPAR());
+            }
+        });
+    }
+
+    fetchRunningProcesses();
+    setInterval(fetchRunningProcesses, 10000);
+}); 

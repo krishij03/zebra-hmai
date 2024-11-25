@@ -63,6 +63,32 @@ module.exports.createZconfig = async function(req, res){
           "checkInterval": "1",
           "defaultStartDate": "2024-08-20",
           "continuousMonitoring": true
+        },
+        "hmre": {
+          "ftp": {
+            "directory": "/u/hmre/hmrecsv"
+          },
+          "mysql": {
+            "host": "localhost",
+            "user": "defaultuser",
+            "password": "defaultpassword"
+          },
+          "checkInterval": "1",
+          "defaultStartDate": "2024-08-20",
+          "continuousMonitoring": true
+        },
+        "dcol": {
+          "ftp": {
+            "directory": "/u/hmaidcol"
+          },
+          "mysql": {
+            "host": "localhost",
+            "user": "defaultuser",
+            "password": "defaultpassword"
+          },
+          "checkInterval": "1",
+          "defaultStartDate": "2024-08-20",
+          "continuousMonitoring": true
         }
       }
     },
@@ -128,6 +154,38 @@ module.exports.updatedds = async function(req, res){
       }
     }
     
+    // Handle HMRE configuration update
+    if (req.body.update.hmre) {
+      if (!Zconfig.dds[req.body.sysid].hmre) {
+        Zconfig.dds[req.body.sysid].hmre = {};
+      }
+      if (req.body.update.hmre.ftp) {
+        Zconfig.dds[req.body.sysid].hmre.ftp = req.body.update.hmre.ftp;
+      }
+      if (req.body.update.hmre.mysql) {
+        Zconfig.dds[req.body.sysid].hmre.mysql = req.body.update.hmre.mysql;
+      }
+      Zconfig.dds[req.body.sysid].hmre.checkInterval = req.body.update.hmre.checkInterval;
+      Zconfig.dds[req.body.sysid].hmre.defaultStartDate = req.body.update.hmre.defaultStartDate;
+      Zconfig.dds[req.body.sysid].hmre.continuousMonitoring = req.body.update.hmre.continuousMonitoring;
+    }
+
+    // Handle DCOL configuration update
+    if (req.body.update.dcol) {
+      if (!Zconfig.dds[req.body.sysid].dcol) {
+        Zconfig.dds[req.body.sysid].dcol = {};
+      }
+      if (req.body.update.dcol.ftp) {
+        Zconfig.dds[req.body.sysid].dcol.ftp = req.body.update.dcol.ftp;
+      }
+      if (req.body.update.dcol.mysql) {
+        Zconfig.dds[req.body.sysid].dcol.mysql = req.body.update.dcol.mysql;
+      }
+      Zconfig.dds[req.body.sysid].dcol.checkInterval = req.body.update.dcol.checkInterval;
+      Zconfig.dds[req.body.sysid].dcol.defaultStartDate = req.body.update.dcol.defaultStartDate;
+      Zconfig.dds[req.body.sysid].dcol.continuousMonitoring = req.body.update.dcol.continuousMonitoring;
+    }
+    
     await fs.writeFile("./config/Zconfig.json", JSON.stringify(Zconfig, null, '\t'), 'utf-8');
     global.Zconfig = global.reloadZconfig();
     res.send(`${req.body.sysid} Details Updated Successfully`);
@@ -158,6 +216,38 @@ module.exports.savedds = async function(req, res) {
         }
         Object.assign(global.Zconfig.dds[req.body.sysid].hmai.dataRetention, req.body.update.hmai.dataRetention);
       }
+    }
+
+    // Handle HMRE configuration
+    if (req.body.update.hmre) {
+      if (!global.Zconfig.dds[req.body.sysid].hmre) {
+        global.Zconfig.dds[req.body.sysid].hmre = {};
+      }
+      if (req.body.update.hmre.ftp) {
+        global.Zconfig.dds[req.body.sysid].hmre.ftp = req.body.update.hmre.ftp;
+      }
+      if (req.body.update.hmre.mysql) {
+        global.Zconfig.dds[req.body.sysid].hmre.mysql = req.body.update.hmre.mysql;
+      }
+      global.Zconfig.dds[req.body.sysid].hmre.checkInterval = req.body.update.hmre.checkInterval;
+      global.Zconfig.dds[req.body.sysid].hmre.defaultStartDate = req.body.update.hmre.defaultStartDate;
+      global.Zconfig.dds[req.body.sysid].hmre.continuousMonitoring = req.body.update.hmre.continuousMonitoring;
+    }
+
+    // Handle DCOL configuration
+    if (req.body.update.dcol) {
+      if (!global.Zconfig.dds[req.body.sysid].dcol) {
+        global.Zconfig.dds[req.body.sysid].dcol = {};
+      }
+      if (req.body.update.dcol.ftp) {
+        global.Zconfig.dds[req.body.sysid].dcol.ftp = req.body.update.dcol.ftp;
+      }
+      if (req.body.update.dcol.mysql) {
+        global.Zconfig.dds[req.body.sysid].dcol.mysql = req.body.update.dcol.mysql;
+      }
+      global.Zconfig.dds[req.body.sysid].dcol.checkInterval = req.body.update.dcol.checkInterval;
+      global.Zconfig.dds[req.body.sysid].dcol.defaultStartDate = req.body.update.dcol.defaultStartDate;
+      global.Zconfig.dds[req.body.sysid].dcol.continuousMonitoring = req.body.update.dcol.continuousMonitoring;
     }
     
     const configPath = path.join(__dirname, '..', '..', 'config', 'Zconfig.json');
@@ -195,6 +285,7 @@ module.exports.updateconfig = function(req, res) {
       var parameterKey = queryParameterKeys[i];
       if (parameterKey === 'dds') {
         Object.keys(req.body.dds).forEach(lpar => {
+          // Handle HMAI configuration
           if (req.body.dds[lpar] && req.body.dds[lpar].hmai) {
             // Handle HMAI configuration
             if (!Zconfig.dds[lpar]) {
@@ -231,6 +322,52 @@ module.exports.updateconfig = function(req, res) {
             Zconfig.dds[lpar].hmai.checkInterval = req.body.dds[lpar].hmai.checkInterval || Zconfig.dds[lpar].hmai.checkInterval;
             Zconfig.dds[lpar].hmai.defaultStartDate = req.body.dds[lpar].hmai.defaultStartDate || Zconfig.dds[lpar].hmai.defaultStartDate;
             Zconfig.dds[lpar].hmai.continuousMonitoring = req.body.dds[lpar].hmai.continuousMonitoring !== undefined ? req.body.dds[lpar].hmai.continuousMonitoring : Zconfig.dds[lpar].hmai.continuousMonitoring;
+          }
+
+          // Handle HMRE configuration
+          if (req.body.dds[lpar] && req.body.dds[lpar].hmre) {
+            if (!Zconfig.dds[lpar]) Zconfig.dds[lpar] = {};
+            if (!Zconfig.dds[lpar].hmre) Zconfig.dds[lpar].hmre = {};
+
+            // Update FTP directory
+            if (req.body.dds[lpar].hmre.ftp && req.body.dds[lpar].hmre.ftp.directory) {
+              Zconfig.dds[lpar].hmre.ftp = Zconfig.dds[lpar].hmre.ftp || {};
+              Zconfig.dds[lpar].hmre.ftp.directory = req.body.dds[lpar].hmre.ftp.directory;
+            }
+
+            // Update MySQL configuration
+            if (req.body.dds[lpar].hmre.mysql) {
+              Zconfig.dds[lpar].hmre.mysql = Zconfig.dds[lpar].hmre.mysql || {};
+              Object.assign(Zconfig.dds[lpar].hmre.mysql, req.body.dds[lpar].hmre.mysql);
+            }
+
+            // Update other HMRE fields
+            Zconfig.dds[lpar].hmre.checkInterval = req.body.dds[lpar].hmre.checkInterval || Zconfig.dds[lpar].hmre.checkInterval;
+            Zconfig.dds[lpar].hmre.defaultStartDate = req.body.dds[lpar].hmre.defaultStartDate || Zconfig.dds[lpar].hmre.defaultStartDate;
+            Zconfig.dds[lpar].hmre.continuousMonitoring = req.body.dds[lpar].hmre.continuousMonitoring !== undefined ? req.body.dds[lpar].hmre.continuousMonitoring : Zconfig.dds[lpar].hmre.continuousMonitoring;
+          }
+
+          // Handle DCOL configuration
+          if (req.body.dds[lpar] && req.body.dds[lpar].dcol) {
+            if (!Zconfig.dds[lpar]) Zconfig.dds[lpar] = {};
+            if (!Zconfig.dds[lpar].dcol) Zconfig.dds[lpar].dcol = {};
+
+            // Update FTP directory
+            if (req.body.dds[lpar].dcol.ftp && req.body.dds[lpar].dcol.ftp.directory) {
+              Zconfig.dds[lpar].dcol.ftp = Zconfig.dds[lpar].dcol.ftp || {};
+              Zconfig.dds[lpar].dcol.ftp.directory = req.body.dds[lpar].dcol.ftp.directory;
+            }
+
+            // Update MySQL configuration
+            if (req.body.dds[lpar].dcol.mysql) {
+              Zconfig.dds[lpar].dcol.mysql = Zconfig.dds[lpar].dcol.mysql || {};
+              Object.assign(Zconfig.dds[lpar].dcol.mysql, req.body.dds[lpar].dcol.mysql);
+            }
+
+            // Update other DCOL fields
+            Zconfig.dds[lpar].dcol.checkInterval = req.body.dds[lpar].dcol.checkInterval || Zconfig.dds[lpar].dcol.checkInterval;
+            Zconfig.dds[lpar].dcol.defaultStartDate = req.body.dds[lpar].dcol.defaultStartDate || Zconfig.dds[lpar].dcol.defaultStartDate;
+            Zconfig.dds[lpar].dcol.continuousMonitoring = req.body.dds[lpar].dcol.continuousMonitoring !== undefined ? req.body.dds[lpar].dcol.continuousMonitoring : Zconfig.dds[lpar].dcol.continuousMonitoring;
           }
         });
       }else {

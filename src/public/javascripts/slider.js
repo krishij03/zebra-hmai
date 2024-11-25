@@ -94,6 +94,32 @@ function updateconfig(){
       checkInterval: $(`#hmaiCheckInterval_${selectedLPAR}`).val(),
       defaultStartDate: $(`#hmaiDefaultStartDate_${selectedLPAR}`).val(),
       continuousMonitoring: $(`#hmaiContinuousMonitoring_${selectedLPAR}`).is(':checked')
+    },
+    hmre: {
+      ftp: {
+        directory: $(`#hmreFtpDirectory_${selectedLPAR}`).val()
+      },
+      mysql: {
+        host: $(`#hmreMysqlHost_${selectedLPAR}`).val(),
+        user: $(`#hmreMysqlUser_${selectedLPAR}`).val(),
+        password: $(`#hmreMysqlPassword_${selectedLPAR}`).val()
+      },
+      checkInterval: $(`#hmreCheckInterval_${selectedLPAR}`).val(),
+      defaultStartDate: $(`#hmreDefaultStartDate_${selectedLPAR}`).val(),
+      continuousMonitoring: $(`#hmreContinuousMonitoring_${selectedLPAR}`).is(':checked')
+    },
+    dcol: {
+      ftp: {
+        directory: $(`#dcolFtpDirectory_${selectedLPAR}`).val()
+      },
+      mysql: {
+        host: $(`#dcolMysqlHost_${selectedLPAR}`).val(),
+        user: $(`#dcolMysqlUser_${selectedLPAR}`).val(),
+        password: $(`#dcolMysqlPassword_${selectedLPAR}`).val()
+      },
+      checkInterval: $(`#dcolCheckInterval_${selectedLPAR}`).val(),
+      defaultStartDate: $(`#dcolDefaultStartDate_${selectedLPAR}`).val(),
+      continuousMonitoring: $(`#dcolContinuousMonitoring_${selectedLPAR}`).is(':checked')
     }
   };
 
@@ -154,6 +180,32 @@ function updatedds(key) {
         checkInterval: $(`#hmaiCheckInterval_${key}`).val(),
         defaultStartDate: $(`#hmaiDefaultStartDate_${key}`).val(),
         continuousMonitoring: $(`#hmaiContinuousMonitoring_${key}`).is(':checked')
+      },
+      hmre: {
+        ftp: {
+          directory: $(`#hmreFtpDirectory_${key}`).val()
+        },
+        mysql: {
+          host: $(`#hmreMysqlHost_${key}`).val(),
+          user: $(`#hmreMysqlUser_${key}`).val(),
+          password: $(`#hmreMysqlPassword_${key}`).val()
+        },
+        checkInterval: $(`#hmreCheckInterval_${key}`).val(),
+        defaultStartDate: $(`#hmreDefaultStartDate_${key}`).val(),
+        continuousMonitoring: $(`#hmreContinuousMonitoring_${key}`).is(':checked')
+      },
+      dcol: {
+        ftp: {
+          directory: $(`#dcolFtpDirectory_${key}`).val()
+        },
+        mysql: {
+          host: $(`#dcolMysqlHost_${key}`).val(),
+          user: $(`#dcolMysqlUser_${key}`).val(),
+          password: $(`#dcolMysqlPassword_${key}`).val()
+        },
+        checkInterval: $(`#dcolCheckInterval_${key}`).val(),
+        defaultStartDate: $(`#dcolDefaultStartDate_${key}`).val(),
+        continuousMonitoring: $(`#dcolContinuousMonitoring_${key}`).is(':checked')
       }
     }
   };
@@ -215,6 +267,32 @@ function savedds() {
         checkInterval: $(`#hmaiCheckInterval`).val(),
         defaultStartDate: $(`#hmaiDefaultStartDate`).val(),
         continuousMonitoring: $(`#hmaiContinuousMonitoring`).is(':checked')
+      },
+      hmre: {
+        ftp: {
+          directory: $(`#hmreFtpDirectory`).val()
+        },
+        mysql: {
+          host: $(`#hmreMysqlHost`).val(),
+          user: $(`#hmreMysqlUser`).val(),
+          password: $(`#hmreMysqlPassword`).val()
+        },
+        checkInterval: $(`#hmreCheckInterval`).val(),
+        defaultStartDate: $(`#hmreDefaultStartDate`).val(),
+        continuousMonitoring: $(`#hmreContinuousMonitoring`).is(':checked')
+      },
+      dcol: {
+        ftp: {
+          directory: $(`#dcolFtpDirectory`).val()
+        },
+        mysql: {
+          host: $(`#dcolMysqlHost`).val(),
+          user: $(`#dcolMysqlUser`).val(),
+          password: $(`#dcolMysqlPassword`).val()
+        },
+        checkInterval: $(`#dcolCheckInterval`).val(),
+        defaultStartDate: $(`#dcolDefaultStartDate`).val(),
+        continuousMonitoring: $(`#dcolContinuousMonitoring`).is(':checked')
       }
     }
   };

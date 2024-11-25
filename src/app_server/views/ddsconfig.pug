@@ -125,6 +125,50 @@ block header
                                         input(type="number" class="form-control" id=`retentionPgrp_${key}` style={"margin-right": "10px"} value=`${val.hmai && val.hmai.dataRetention ? val.hmai.dataRetention.pgrp : ''}`)
                                         p(style={"margin-top":"10px", "margin-right": "10px"}) PORT Retention (days)
                                         input(type="number" class="form-control" id=`retentionPort_${key}` style={"margin-right": "10px"} value=`${val.hmai && val.hmai.dataRetention ? val.hmai.dataRetention.port : ''}`)
+                                .row
+                                    h5(class='hdd', style={"margin-top":"20px"}) HMRE Configuration
+                                    hr
+                                .row
+                                    .col-md-4
+                                        p(style={"margin-top":"10px", "margin-right": "10px"}) FTP Directory
+                                        input(type="text" class="form-control" id=`hmreFtpDirectory_${key}` style={"margin-right": "10px"} value=`${val.hmre && val.hmre.ftp ? val.hmre.ftp.directory : ''}`)
+                                    .col-md-4
+                                        p(style={"margin-top":"10px", "margin-right": "10px"}) MySQL Host
+                                        input(type="text" class="form-control" id=`hmreMysqlHost_${key}` style={"margin-right": "10px"} value=`${val.hmre && val.hmre.mysql ? val.hmre.mysql.host : ''}`)
+                                        p(style={"margin-top":"10px", "margin-right": "10px"}) MySQL User
+                                        input(type="text" class="form-control" id=`hmreMysqlUser_${key}` style={"margin-right": "10px"} value=`${val.hmre && val.hmre.mysql ? val.hmre.mysql.user : ''}`)
+                                        p(style={"margin-top":"10px", "margin-right": "10px"}) MySQL Password
+                                        input(type="password" class="form-control" id=`hmreMysqlPassword_${key}` style={"margin-right": "10px"} value=`${val.hmre && val.hmre.mysql ? val.hmre.mysql.password : ''}`)
+                                    .col-md-4
+                                        p(style={"margin-top":"10px", "margin-right": "10px"}) Check Interval (minutes)
+                                        input(type="text" class="form-control" id=`hmreCheckInterval_${key}` style={"margin-right": "10px"} value=`${val.hmre ? val.hmre.checkInterval : ''}`)
+                                        p(style={"margin-top":"10px", "margin-right": "10px"}) Default Start Date
+                                        input(type="date" class="form-control" id=`hmreDefaultStartDate_${key}` style={"margin-right": "10px"} value=`${val.hmre && val.hmre.defaultStartDate ? val.hmre.defaultStartDate : ''}`)
+                                        .form-check
+                                        input.form-check-input(type="checkbox", id=`hmreContinuousMonitoring_${key}` checked=(val.hmre && val.hmre.continuousMonitoring))
+                                        label.form-check-label(for=`hmreContinuousMonitoring_${key}`) Continuous Monitoring
+                                .row
+                                    h5(class='hdd', style={"margin-top":"20px"}) DCOL Configuration
+                                    hr
+                                .row
+                                    .col-md-4
+                                        p(style={"margin-top":"10px", "margin-right": "10px"}) FTP Directory
+                                        input(type="text" class="form-control" id=`dcolFtpDirectory_${key}` style={"margin-right": "10px"} value=`${val.dcol && val.dcol.ftp ? val.dcol.ftp.directory : ''}`)
+                                    .col-md-4
+                                        p(style={"margin-top":"10px", "margin-right": "10px"}) MySQL Host
+                                        input(type="text" class="form-control" id=`dcolMysqlHost_${key}` style={"margin-right": "10px"} value=`${val.dcol && val.dcol.mysql ? val.dcol.mysql.host : ''}`)
+                                        p(style={"margin-top":"10px", "margin-right": "10px"}) MySQL User
+                                        input(type="text" class="form-control" id=`dcolMysqlUser_${key}` style={"margin-right": "10px"} value=`${val.dcol && val.dcol.mysql ? val.dcol.mysql.user : ''}`)
+                                        p(style={"margin-top":"10px", "margin-right": "10px"}) MySQL Password
+                                        input(type="password" class="form-control" id=`dcolMysqlPassword_${key}` style={"margin-right": "10px"} value=`${val.dcol && val.dcol.mysql ? val.dcol.mysql.password : ''}`)
+                                    .col-md-4
+                                        p(style={"margin-top":"10px", "margin-right": "10px"}) Check Interval (minutes)
+                                        input(type="text" class="form-control" id=`dcolCheckInterval_${key}` style={"margin-right": "10px"} value=`${val.dcol ? val.dcol.checkInterval : ''}`)
+                                        p(style={"margin-top":"10px", "margin-right": "10px"}) Default Start Date
+                                        input(type="date" class="form-control" id=`dcolDefaultStartDate_${key}` style={"margin-right": "10px"} value=`${val.dcol && val.dcol.defaultStartDate ? val.dcol.defaultStartDate : ''}`)
+                                        .form-check
+                                        input.form-check-input(type="checkbox", id=`dcolContinuousMonitoring_${key}` checked=(val.dcol && val.dcol.continuousMonitoring))
+                                        label.form-check-label(for=`dcolContinuousMonitoring_${key}`) Continuous Monitoring
                                 .row 
                                     .col-md-3 
                                         a(onclick='plusSlides(-1)' class='btn btn-primary' id="rmf3b", style={"margin-top":"13px", "width":"98%", "color":"white"}) Previous
@@ -224,7 +268,50 @@ block header
                                 input(type="number" class="form-control" id=`retentionPgrp_${key}` style={"margin-right": "10px"})
                                 p(style={"margin-top":"10px", "margin-right": "10px"}) PORT Retention (days)
                                 input(type="number" class="form-control" id=`retentionPort_${key}` style={"margin-right": "10px"})
-                                
+                        .row
+                            h5(class='hdd', style={"margin-top":"20px"}) HMRE Configuration
+                            hr
+                        .row(style={"width":"96%"})
+                            .col-md-4
+                                p(style={"margin-top":"10px", "margin-right": "10px"}) FTP Directory
+                                input(type="text" class="form-control" id="hmreFtpDirectory" style={"margin-right": "10px"})
+                            .col-md-4
+                                p(style={"margin-top":"10px", "margin-right": "10px"}) MySQL Host
+                                input(type="text" class="form-control" id="hmreMysqlHost" style={"margin-right": "10px"})
+                                p(style={"margin-top":"10px", "margin-right": "10px"}) MySQL User
+                                input(type="text" class="form-control" id="hmreMysqlUser" style={"margin-right": "10px"})
+                                p(style={"margin-top":"10px", "margin-right": "10px"}) MySQL Password
+                                input(type="password" class="form-control" id="hmreMysqlPassword" style={"margin-right": "10px"})
+                            .col-md-4
+                                p(style={"margin-top":"10px", "margin-right": "10px"}) Check Interval (minutes)
+                                input(type="text" class="form-control" id="hmreCheckInterval" style={"margin-right": "10px"})
+                                p(style={"margin-top":"10px", "margin-right": "10px"}) Default Start Date
+                                input(type="date" class="form-control" id="hmreDefaultStartDate" style={"margin-right": "10px"})
+                                .form-check
+                                input.form-check-input(type="checkbox", id="hmreContinuousMonitoring")
+                                label.form-check-label(for="hmreContinuousMonitoring") Continuous Monitoring
+                        .row
+                            h5(class='hdd', style={"margin-top":"20px"}) DCOL Configuration
+                            hr
+                        .row(style={"width":"96%"})
+                            .col-md-4
+                                p(style={"margin-top":"10px", "margin-right": "10px"}) FTP Directory
+                                input(type="text" class="form-control" id="dcolFtpDirectory" style={"margin-right": "10px"})
+                            .col-md-4
+                                p(style={"margin-top":"10px", "margin-right": "10px"}) MySQL Host
+                                input(type="text" class="form-control" id="dcolMysqlHost" style={"margin-right": "10px"})
+                                p(style={"margin-top":"10px", "margin-right": "10px"}) MySQL User
+                                input(type="text" class="form-control" id="dcolMysqlUser" style={"margin-right": "10px"})
+                                p(style={"margin-top":"10px", "margin-right": "10px"}) MySQL Password
+                                input(type="password" class="form-control" id="dcolMysqlPassword" style={"margin-right": "10px"})
+                            .col-md-4
+                                p(style={"margin-top":"10px", "margin-right": "10px"}) Check Interval (minutes)
+                                input(type="text" class="form-control" id="dcolCheckInterval" style={"margin-right": "10px"})
+                                p(style={"margin-top":"10px", "margin-right": "10px"}) Default Start Date
+                                input(type="date" class="form-control" id="dcolDefaultStartDate" style={"margin-right": "10px"})
+                                .form-check
+                                input.form-check-input(type="checkbox", id="dcolContinuousMonitoring")
+                                label.form-check-label(for="dcolContinuousMonitoring") Continuous Monitoring
                         a(href='javascript:savedds()' class='btn btn-primary' id="rmf3b", style={"margin-top":"13px", "width":"98%", "color":"white"}) Save
                     
 

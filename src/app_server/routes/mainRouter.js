@@ -1,19 +1,22 @@
 var express = require('express');
 var router = express.Router();
-var  ctrlMain = require('../Controllers/mainController');
-var  ctrlConfig = require('../Controllers/config');
-var  ctrlMongo = require('../Controllers/mongohandler');
+var ctrlMain = require('../Controllers/mainController');
+var ctrlConfig = require('../Controllers/config');
+var ctrlMongo = require('../Controllers/mongohandler');
 const Prometheus = require('prom-client');
 var session = require('express-session');
 const swaggerUi = require('swagger-ui-express'),
     swaggerdoc = require("../../Zebra_Swagger.json");
 var ctrlHmai = require('../Controllers/hmaiController');
+const dcolController = require('../Controllers/dcolController');
+const hmreController = require('../Controllers/hmreController');
 const { getMetrics } = require('../../metrics');
 require('dotenv').config();
 const bcrypt = require('bcryptjs')
-var  Auth = require('../../Auth');
+var Auth = require('../../Auth');
 const path = require('path');
 const fs = require('fs');
+
 //var Zconfig;
 try{
   var Zconfig = require("../../config/Zconfig.json");
@@ -86,6 +89,43 @@ router.post('/hmai/download-csv', ctrlHmai.downloadCSV);
 router.post('/hmai/stop-monitoring', ctrlHmai.stopContinuousMonitoring);  
 router.get('/hmai/running-processes', ctrlHmai.getRunningProcesses);
 router.post('/hmai/start-all', ctrlHmai.startHMAIForAllLpars);
+
+// Add this route handler after the hmai route
+router.get('/dcol', function(req, res, next) {
+  const Zconfig = require('../../config/Zconfig.json');
+  const lpars = Object.keys(Zconfig.dds);
+  console.log("Rendering DCOL report with lpars:", lpars);
+  res.render('dcolReport', { 
+    title: 'DCOL Report', 
+    lpars: lpars,
+    lparConfig: Zconfig.dds
+  });
+});
+
+// Add these routes after the hmai routes
+router.post('/dcol/start', dcolController.startDCOL);
+router.post('/dcol/clear-db', dcolController.clearDatabase);
+router.post('/dcol/stop-monitoring', dcolController.stopContinuousMonitoring);
+router.get('/dcol/running-processes', dcolController.getRunningProcesses);
+
+// Add this route handler for HMRE
+router.get('/hmre', function(req, res, next) {
+  const Zconfig = require('../../config/Zconfig.json');
+  const lpars = Object.keys(Zconfig.dds);
+  console.log("Rendering HMRE report with lpars:", lpars);
+  res.render('hmreReport', { 
+    title: 'HMRE Report', 
+    lpars: lpars,
+    lparConfig: Zconfig.dds
+  });
+});
+
+// Add these routes for HMRE
+router.post('/hmre/start', hmreController.startHMRE);
+router.post('/hmre/clear-db', hmreController.clearDatabase);
+router.post('/hmre/stop-monitoring', hmreController.stopContinuousMonitoring);
+router.get('/hmre/running-processes', hmreController.getRunningProcesses);
+
 // Checks if user login session is available in browser
 var sessionChecker = (req, res, next) => {
   if (req.session.name && req.cookies.user_sid) { //If user login session is available
@@ -574,5 +614,22 @@ router.get("/logout", Auth.authenticateToken, (req,res) => {
   });
 })
 
+// Add this route handler after the hmai route
+router.get('/dcol', function(req, res, next) {
+  const Zconfig = require('../../config/Zconfig.json');
+  const lpars = Object.keys(Zconfig.dds);
+  console.log("Rendering DCOL report with lpars:", lpars);
+  res.render('dcolReport', { 
+    title: 'DCOL Report', 
+    lpars: lpars,
+    lparConfig: Zconfig.dds
+  });
+});
+
+// Add these routes after the hmai routes
+router.post('/dcol/start', dcolController.startDCOL);
+router.post('/dcol/clear-db', dcolController.clearDatabase);
+router.post('/dcol/stop-monitoring', dcolController.stopContinuousMonitoring);
+router.get('/dcol/running-processes', dcolController.getRunningProcesses);
 
 module.exports = router;

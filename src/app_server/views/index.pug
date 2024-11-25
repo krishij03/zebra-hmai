@@ -97,11 +97,21 @@ block content
                     .form-group
                         img(src="/images/grafana.png", height="60", width="60")
                         a.h6(style={"margin-left":"20px"}, href="/grafana") Browse data with Grafana
-            .col-md-4
+            .col-md-6
                 form(class="form-inline" action="/hmai")
                     .form-group
                         img(src="/images/mysql.png", height="40", width="60")
                         a.h6(style={"margin-left":"20px"}, href="/hmai") Browse Hitachi Mainframe Analytics Interpreter with MySQL
+            .col-md-6
+                form(class="form-inline" action="/dcol")
+                    .form-group
+                        img(src="/images/mysql.png", height="40", width="60")
+                        a.h6(style={"margin-left":"20px"}, href="/dcol") Browse Hitachi Mainframe Analytics Interpreter DCOLLECT with MySQL
+            .col-md-6
+                form(class="form-inline" action="/hmre")
+                    .form-group
+                        img(src="/images/mysql.png", height="40", width="60")
+                        a.h6(style={"margin-left":"20px"}, href="/hmre") Browse Hitachi Mainframe Replication Enhanced data through MySQL
 
 block scripts
     script(src='https://code.jquery.com/jquery-3.5.1.min.js')
