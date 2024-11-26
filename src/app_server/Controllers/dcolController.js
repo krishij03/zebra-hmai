@@ -49,6 +49,13 @@ function getTableNameFromFileName(fileName) {
 }
 
 async function createTables(connection) {
+    console.log('Creating/checking tables...');
+    
+    // First check if tables exist
+    const [tables] = await connection.query('SHOW TABLES');
+    const existingTables = tables.map(t => Object.values(t)[0]);
+    console.log('Existing tables:', existingTables);
+
     const createTableQueries = [
         `CREATE TABLE IF NOT EXISTS dcollect_a (
             id INT NOT NULL AUTO_INCREMENT,
@@ -1105,8 +1112,19 @@ async function createTables(connection) {
         ];
 
     for (const query of createTableQueries) {
-        await connection.query(query);
+        try {
+            await connection.query(query);
+            console.log('Successfully executed table creation query');
+        } catch (error) {
+            console.error('Error creating table:', error);
+            throw error;
+        }
     }
+
+    // Verify tables were created
+    const [tablesAfter] = await connection.query('SHOW TABLES');
+    const existingTablesAfter = tablesAfter.map(t => Object.values(t)[0]);
+    console.log('Tables after creation:', existingTablesAfter);
 }
 
 function promisifyFtpCommand(ftpClient, command, ...args) {
@@ -1154,7 +1172,11 @@ async function loadDataFromFTPToMySQL(ftpClient, mysqlConnection, remotePath, ta
                     sql: sql,
                     infileStreamFactory: () => passthroughStream
                 });
-                console.log(`Data loaded into ${tableName}`);
+                
+                const [rows] = await mysqlConnection.query(`SELECT ROW_COUNT() as count`);
+                const affectedRows = rows[0].count;
+                
+                console.log(`Data loaded into ${tableName}: ${affectedRows} rows affected`);
                 resolve(result);
             } catch (error) {
                 console.error(`Error loading data into ${tableName}:`, error);
@@ -1275,28 +1297,57 @@ async function startDCOL(req, res) {
     let databaseCreated = false;
 
     try {
+        // Create MySQL connection without database specified
         mysqlConnection = await mysql.createConnection({
             host: config.dds[lpar].dcol.mysql.host,
             user: config.dds[lpar].dcol.mysql.user,
             password: config.dds[lpar].dcol.mysql.password,
             multipleStatements: true
         });
+        console.log('MySQL connection established');
 
+        // Check if database exists
         const [rows] = await mysqlConnection.query(`SHOW DATABASES LIKE '${lpar}'`);
         if (rows.length === 0) {
+            // Create database
             await mysqlConnection.query(`CREATE DATABASE ${lpar}`);
             databaseCreated = true;
+            console.log(`Database ${lpar} created`);
+        } else {
+            console.log(`Database ${lpar} already exists`);
         }
 
+        // Use the database
         await mysqlConnection.query(`USE ${lpar}`);
+        console.log(`Using database ${lpar}`);
 
-        if (databaseCreated) {
-            await createTables(mysqlConnection);
-        }
+        // Always create tables if they don't exist
+        await createTables(mysqlConnection);
+        console.log('Ensured tables exist');
 
+        // Initialize or get DCOL memory
+        const visitedDirs = await new Promise((resolve, reject) => {
+            dcolJSONcontroller.readLparData(lpar, (err, data) => {
+                if (err) {
+                    // If error reading, initialize empty memory
+                    dcolJSONcontroller.writeLparData(lpar, {}, (writeErr) => {
+                        if (writeErr) reject(writeErr);
+                        else resolve({});
+                    });
+                } else {
+                    resolve(data || {});
+                }
+            });
+        });
+        console.log('DCOL memory initialized/loaded');
+
+        // Start FTP connection
         ftpClient = new FTP();
         await new Promise((resolve, reject) => {
-            ftpClient.on('ready', resolve);
+            ftpClient.on('ready', () => {
+                console.log('FTP connection established');
+                resolve();
+            });
             ftpClient.on('error', reject);
             ftpClient.connect({
                 host: config.dds[lpar].ddsbaseurl,
@@ -1305,6 +1356,7 @@ async function startDCOL(req, res) {
             });
         });
 
+        console.log('Starting to check for new files');
         if (continuousMonitoring) {
             await checkForNewFiles(ftpClient, mysqlConnection, startDate, null, lpar, metrics);
             startContinuousMonitoring(lpar, metrics);
@@ -1312,6 +1364,7 @@ async function startDCOL(req, res) {
             await checkForNewFiles(ftpClient, mysqlConnection, startDate, endDate, lpar, metrics);
             runningProcesses[lpar].isRunning = false;
         }
+        console.log('Finished checking for new files');
 
         res.json({ 
             success: true, 
@@ -1324,8 +1377,18 @@ async function startDCOL(req, res) {
         res.status(500).json({ success: false, message: 'Error in DCOL process', error: error.message });
     } finally {
         if (!continuousMonitoring) {
-            if (mysqlConnection) await mysqlConnection.end();
-            if (ftpClient && ftpClient.connected) ftpClient.end();
+            if (mysqlConnection) {
+                try {
+                    await mysqlConnection.end();
+                    console.log('MySQL connection closed.');
+                } catch (err) {
+                    console.error('Error closing MySQL connection:', err);
+                }
+            }
+            if (ftpClient && ftpClient.connected) {
+                ftpClient.end();
+                console.log('FTP connection closed.');
+            }
         }
     }
 }

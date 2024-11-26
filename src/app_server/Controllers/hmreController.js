@@ -17,36 +17,7 @@ const tableHeaders = {
     hmrecsvd: ['Timestamp', 'CurrentTime', 'BCM_Prefix', 'HMRE_ID', 'CTDelta_Secs', 'MCU_TO_RCU_KBPS', 'CG_', 'CTDelta_Secs_CG1', 'MCU_TO_RCU_KBPS_CG1', 'Pri_JNL_Meta_CG1', 'Pri_JNL_Data_CG1', 'Sec_JNL_Meta_CG1', 'Sec_JNL_Data_CG1', 'CTDelta_Secs_CG2', 'MCU_TO_RCU_KBPS_CG2', 'Pri_JNL_Meta_CG2', 'Pri_JNL_Data_CG2', 'Sec_JNL_Meta_CG2', 'Sec_JNL_Data_CG2', 'CTDelta_Secs_CG3', 'MCU_TO_RCU_KBPS_CG3', 'Pri_JNL_Meta_CG3', 'Pri_JNL_Data_CG3', 'Sec_JNL_Meta_CG3', 'Sec_JNL_Data_CG3', 'CTDelta_Secs_CG4', 'MCU_TO_RCU_KBPS_CG4', 'Pri_JNL_Meta_CG4', 'Pri_JNL_Data_CG4', 'Sec_JNL_Meta_CG4', 'Sec_JNL_Data_CG4', 'CTDelta_Secs_CG5', 'MCU_TO_RCU_KBPS_CG5', 'Pri_JNL_Meta_CG5', 'Pri_JNL_Data_CG5', 'Sec_JNL_Meta_CG5', 'Sec_JNL_Data_CG5', 'CTDelta_Secs_CG6', 'MCU_TO_RCU_KBPS_CG6', 'Pri_JNL_Meta_CG6', 'Pri_JNL_Data_CG6', 'Sec_JNL_Meta_CG6', 'Sec_JNL_Data_CG6', 'CTDelta_Secs_CG7', 'MCU_TO_RCU_KBPS_CG7', 'Pri_JNL_Meta_CG7', 'Pri_JNL_Data_CG7', 'Sec_JNL_Meta_CG7', 'Sec_JNL_Data_CG7', 'CTDelta_Secs_CG8', 'MCU_TO_RCU_KBPS_CG8', 'Pri_JNL_Meta_CG8', 'Pri_JNL_Data_CG8', 'Sec_JNL_Meta_CG8', 'Sec_JNL_Data_CG8', 'CTDelta_Secs_CG9', 'MCU_TO_RCU_KBPS_CG9', 'Pri_JNL_Meta_CG9', 'Pri_JNL_Data_CG9', 'Sec_JNL_Meta_CG9', 'Sec_JNL_Data_CG9', 'CTDelta_Secs_CG10', 'MCU_TO_RCU_KBPS_CG10', 'Pri_JNL_Meta_CG10', 'Pri_JNL_Data_CG10', 'Sec_JNL_Meta_CG10', 'Sec_JNL_Data_CG10', 'CTDelta_Secs_CG11', 'MCU_TO_RCU_KBPS_CG11', 'Pri_JNL_Meta_CG11', 'Pri_JNL_Data_CG11', 'Sec_JNL_Meta_CG11', 'Sec_JNL_Data_CG11', 'CTDelta_Secs_CG12', 'MCU_TO_RCU_KBPS_CG12', 'Pri_JNL_Meta_CG12', 'Pri_JNL_Data_CG12', 'Sec_JNL_Meta_CG12', 'Sec_JNL_Data_CG12', 'CTDelta_Secs_CG13', 'MCU_TO_RCU_KBPS_CG13', 'Pri_JNL_Meta_CG13', 'Pri_JNL_Data_CG13', 'Sec_JNL_Meta_CG13', 'Sec_JNL_Data_CG13', 'CTDelta_Secs_CG14', 'MCU_TO_RCU_KBPS_CG14', 'Pri_JNL_Meta_CG14', 'Pri_JNL_Data_CG14', 'Sec_JNL_Meta_CG14', 'Sec_JNL_Data_CG14', 'CTDelta_Secs_CG15', 'MCU_TO_RCU_KBPS_CG15', 'Pri_JNL_Meta_CG15', 'Pri_JNL_Data_CG15', 'Sec_JNL_Meta_CG15', 'Sec_JNL_Data_CG15', 'CTDelta_Secs_CG16', 'MCU_TO_RCU_KBPS_CG16', 'Pri_JNL_Meta_CG16', 'Pri_JNL_Data_CG16', 'Sec_JNL_Meta_CG16', 'Sec_JNL_Data_CG16']
 };
 
-// Create table queries
-const createTableQueries = [
-    `CREATE TABLE IF NOT EXISTS hmrecsvs (
-        id INT NOT NULL AUTO_INCREMENT,
-        Timestamp DATETIME DEFAULT NULL,
-        CurrentTime VARCHAR(100) DEFAULT NULL,
-        BCM_Prefix VARCHAR(100) DEFAULT NULL,
-        HMRE_ID VARCHAR(100) DEFAULT NULL,
-        CTTime VARCHAR(100) DEFAULT NULL,
-        CTDelta_Secs INT DEFAULT NULL,
-        MCU_TO_RCU_KBP INT DEFAULT NULL,
-        Pri_JNL_Meta INT DEFAULT NULL,
-        Pri_JNL_Data INT DEFAULT NULL,
-        Sec_JNL_Meta INT DEFAULT NULL,
-        Sec_JNL_Data INT DEFAULT NULL,
-        PRIMARY KEY (id)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`,
-    `CREATE TABLE IF NOT EXISTS hmrecsvd (
-        id INT NOT NULL AUTO_INCREMENT,
-        Timestamp DATETIME DEFAULT NULL,
-        CurrentTime VARCHAR(100) DEFAULT NULL,
-        BCM_Prefix VARCHAR(100) DEFAULT NULL,
-        HMRE_ID VARCHAR(100) DEFAULT NULL,
-        CTDelta_Secs INT DEFAULT NULL,
-        MCU_TO_RCU_KBPS INT DEFAULT NULL,
-        CG_ INT DEFAULT NULL,
-        /* ... rest of the columns ... */
-        PRIMARY KEY (id)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`
-];
+
 
 function parseDirName(dirName) {
     const parts = dirName.split('_');
@@ -74,9 +45,154 @@ function promisifyFtpCommand(ftpClient, command, ...args) {
 }
 
 async function createTables(connection) {
+    console.log('Creating/checking tables...');
+    
+    // First check if tables exist
+    const [tables] = await connection.query('SHOW TABLES');
+    const existingTables = tables.map(t => Object.values(t)[0]);
+    console.log('Existing tables:', existingTables);
+
+    const createTableQueries = [
+        `CREATE TABLE IF NOT EXISTS hmrecsvs (
+            id INT NOT NULL AUTO_INCREMENT,
+            Timestamp DATETIME DEFAULT NULL,
+            CurrentTime VARCHAR(100) DEFAULT NULL,
+            BCM_Prefix VARCHAR(100) DEFAULT NULL,
+            HMRE_ID VARCHAR(100) DEFAULT NULL,
+            CTTime VARCHAR(100) DEFAULT NULL,
+            CTDelta_Secs INT DEFAULT NULL,
+            MCU_TO_RCU_KBP INT DEFAULT NULL,
+            Pri_JNL_Meta INT DEFAULT NULL,
+            Pri_JNL_Data INT DEFAULT NULL,
+            Sec_JNL_Meta INT DEFAULT NULL,
+            Sec_JNL_Data INT DEFAULT NULL,
+            PRIMARY KEY (id),
+            KEY Timestamp_index (Timestamp)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`,
+        `CREATE TABLE IF NOT EXISTS hmrecsvd (
+            id INT NOT NULL AUTO_INCREMENT,
+            Timestamp DATETIME DEFAULT NULL,
+            CurrentTime VARCHAR(100) DEFAULT NULL,
+            BCM_Prefix VARCHAR(100) DEFAULT NULL,
+            HMRE_ID VARCHAR(100) DEFAULT NULL,
+            CTDelta_Secs INT DEFAULT NULL,
+            MCU_TO_RCU_KBPS INT DEFAULT NULL,
+            CG_ INT DEFAULT NULL,
+            CTDelta_Secs_CG1 INT DEFAULT NULL,
+            MCU_TO_RCU_KBPS_CG1 INT DEFAULT NULL,
+            Pri_JNL_Meta_CG1 INT DEFAULT NULL,
+            Pri_JNL_Data_CG1 INT DEFAULT NULL,
+            Sec_JNL_Meta_CG1 INT DEFAULT NULL,
+            Sec_JNL_Data_CG1 INT DEFAULT NULL,
+            CTDelta_Secs_CG2 INT DEFAULT NULL,
+            MCU_TO_RCU_KBPS_CG2 INT DEFAULT NULL,
+            Pri_JNL_Meta_CG2 INT DEFAULT NULL,
+            Pri_JNL_Data_CG2 INT DEFAULT NULL,
+            Sec_JNL_Meta_CG2 INT DEFAULT NULL,
+            Sec_JNL_Data_CG2 INT DEFAULT NULL,
+            CTDelta_Secs_CG3 INT DEFAULT NULL,
+            MCU_TO_RCU_KBPS_CG3 INT DEFAULT NULL,
+            Pri_JNL_Meta_CG3 INT DEFAULT NULL,
+            Pri_JNL_Data_CG3 INT DEFAULT NULL,
+            Sec_JNL_Meta_CG3 INT DEFAULT NULL,
+            Sec_JNL_Data_CG3 INT DEFAULT NULL,
+            CTDelta_Secs_CG4 INT DEFAULT NULL,
+            MCU_TO_RCU_KBPS_CG4 INT DEFAULT NULL,
+            Pri_JNL_Meta_CG4 INT DEFAULT NULL,
+            Pri_JNL_Data_CG4 INT DEFAULT NULL,
+            Sec_JNL_Meta_CG4 INT DEFAULT NULL,
+            Sec_JNL_Data_CG4 INT DEFAULT NULL,
+            CTDelta_Secs_CG5 INT DEFAULT NULL,
+            MCU_TO_RCU_KBPS_CG5 INT DEFAULT NULL,
+            Pri_JNL_Meta_CG5 INT DEFAULT NULL,
+            Pri_JNL_Data_CG5 INT DEFAULT NULL,
+            Sec_JNL_Meta_CG5 INT DEFAULT NULL,
+            Sec_JNL_Data_CG5 INT DEFAULT NULL,
+            CTDelta_Secs_CG6 INT DEFAULT NULL,
+            MCU_TO_RCU_KBPS_CG6 INT DEFAULT NULL,
+            Pri_JNL_Meta_CG6 INT DEFAULT NULL,
+            Pri_JNL_Data_CG6 INT DEFAULT NULL,
+            Sec_JNL_Meta_CG6 INT DEFAULT NULL,
+            Sec_JNL_Data_CG6 INT DEFAULT NULL,
+            CTDelta_Secs_CG7 INT DEFAULT NULL,
+            MCU_TO_RCU_KBPS_CG7 INT DEFAULT NULL,
+            Pri_JNL_Meta_CG7 INT DEFAULT NULL,
+            Pri_JNL_Data_CG7 INT DEFAULT NULL,
+            Sec_JNL_Meta_CG7 INT DEFAULT NULL,
+            Sec_JNL_Data_CG7 INT DEFAULT NULL,
+            CTDelta_Secs_CG8 INT DEFAULT NULL,
+            MCU_TO_RCU_KBPS_CG8 INT DEFAULT NULL,
+            Pri_JNL_Meta_CG8 INT DEFAULT NULL,
+            Pri_JNL_Data_CG8 INT DEFAULT NULL,
+            Sec_JNL_Meta_CG8 INT DEFAULT NULL,
+            Sec_JNL_Data_CG8 INT DEFAULT NULL,
+            CTDelta_Secs_CG9 INT DEFAULT NULL,
+            MCU_TO_RCU_KBPS_CG9 INT DEFAULT NULL,
+            Pri_JNL_Meta_CG9 INT DEFAULT NULL,
+            Pri_JNL_Data_CG9 INT DEFAULT NULL,
+            Sec_JNL_Meta_CG9 INT DEFAULT NULL,
+            Sec_JNL_Data_CG9 INT DEFAULT NULL,
+            CTDelta_Secs_CG10 INT DEFAULT NULL,
+            MCU_TO_RCU_KBPS_CG10 INT DEFAULT NULL,
+            Pri_JNL_Meta_CG10 INT DEFAULT NULL,
+            Pri_JNL_Data_CG10 INT DEFAULT NULL,
+            Sec_JNL_Meta_CG10 INT DEFAULT NULL,
+            Sec_JNL_Data_CG10 INT DEFAULT NULL,
+            CTDelta_Secs_CG11 INT DEFAULT NULL,
+            MCU_TO_RCU_KBPS_CG11 INT DEFAULT NULL,
+            Pri_JNL_Meta_CG11 INT DEFAULT NULL,
+            Pri_JNL_Data_CG11 INT DEFAULT NULL,
+            Sec_JNL_Meta_CG11 INT DEFAULT NULL,
+            Sec_JNL_Data_CG11 INT DEFAULT NULL,
+            CTDelta_Secs_CG12 INT DEFAULT NULL,
+            MCU_TO_RCU_KBPS_CG12 INT DEFAULT NULL,
+            Pri_JNL_Meta_CG12 INT DEFAULT NULL,
+            Pri_JNL_Data_CG12 INT DEFAULT NULL,
+            Sec_JNL_Meta_CG12 INT DEFAULT NULL,
+            Sec_JNL_Data_CG12 INT DEFAULT NULL,
+            CTDelta_Secs_CG13 INT DEFAULT NULL,
+            MCU_TO_RCU_KBPS_CG13 INT DEFAULT NULL,
+            Pri_JNL_Meta_CG13 INT DEFAULT NULL,
+            Pri_JNL_Data_CG13 INT DEFAULT NULL,
+            Sec_JNL_Meta_CG13 INT DEFAULT NULL,
+            Sec_JNL_Data_CG13 INT DEFAULT NULL,
+            CTDelta_Secs_CG14 INT DEFAULT NULL,
+            MCU_TO_RCU_KBPS_CG14 INT DEFAULT NULL,
+            Pri_JNL_Meta_CG14 INT DEFAULT NULL,
+            Pri_JNL_Data_CG14 INT DEFAULT NULL,
+            Sec_JNL_Meta_CG14 INT DEFAULT NULL,
+            Sec_JNL_Data_CG14 INT DEFAULT NULL,
+            CTDelta_Secs_CG15 INT DEFAULT NULL,
+            MCU_TO_RCU_KBPS_CG15 INT DEFAULT NULL,
+            Pri_JNL_Meta_CG15 INT DEFAULT NULL,
+            Pri_JNL_Data_CG15 INT DEFAULT NULL,
+            Sec_JNL_Meta_CG15 INT DEFAULT NULL,
+            Sec_JNL_Data_CG15 INT DEFAULT NULL,
+            CTDelta_Secs_CG16 INT DEFAULT NULL,
+            MCU_TO_RCU_KBPS_CG16 INT DEFAULT NULL,
+            Pri_JNL_Meta_CG16 INT DEFAULT NULL,
+            Pri_JNL_Data_CG16 INT DEFAULT NULL,
+            Sec_JNL_Meta_CG16 INT DEFAULT NULL,
+            Sec_JNL_Data_CG16 INT DEFAULT NULL,
+            PRIMARY KEY (id),
+            KEY Timestamp_index (Timestamp)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`
+    ];
+
     for (const query of createTableQueries) {
-        await connection.query(query);
+        try {
+            await connection.query(query);
+            console.log('Successfully executed table creation query');
+        } catch (error) {
+            console.error('Error creating table:', error);
+            throw error;
+        }
     }
+
+    // Verify tables were created
+    const [tablesAfter] = await connection.query('SHOW TABLES');
+    const existingTablesAfter = tablesAfter.map(t => Object.values(t)[0]);
+    console.log('Tables after creation:', existingTablesAfter);
 }
 
 async function loadDataFromFTPToMySQL(ftpClient, mysqlConnection, remotePath, tableName, columns) {
@@ -276,28 +392,57 @@ async function startHMRE(req, res) {
     let databaseCreated = false;
 
     try {
+        // Create MySQL connection without database specified
         mysqlConnection = await mysql.createConnection({
             host: config.dds[lpar].hmre.mysql.host,
             user: config.dds[lpar].hmre.mysql.user,
             password: config.dds[lpar].hmre.mysql.password,
             multipleStatements: true
         });
+        console.log('MySQL connection established');
 
+        // Check if database exists
         const [rows] = await mysqlConnection.query(`SHOW DATABASES LIKE '${lpar}'`);
         if (rows.length === 0) {
+            // Create database
             await mysqlConnection.query(`CREATE DATABASE ${lpar}`);
             databaseCreated = true;
+            console.log(`Database ${lpar} created`);
+        } else {
+            console.log(`Database ${lpar} already exists`);
         }
 
+        // Use the database
         await mysqlConnection.query(`USE ${lpar}`);
+        console.log(`Using database ${lpar}`);
 
-        if (databaseCreated) {
-            await createTables(mysqlConnection);
-        }
+        // Always create tables if they don't exist
+        await createTables(mysqlConnection);
+        console.log('Ensured tables exist');
 
+        // Initialize or get HMRE memory
+        const visitedDirs = await new Promise((resolve, reject) => {
+            hmreJSONcontroller.readLparData(lpar, (err, data) => {
+                if (err) {
+                    // If error reading, initialize empty memory
+                    hmreJSONcontroller.writeLparData(lpar, {}, (writeErr) => {
+                        if (writeErr) reject(writeErr);
+                        else resolve({});
+                    });
+                } else {
+                    resolve(data || {});
+                }
+            });
+        });
+        console.log('HMRE memory initialized/loaded');
+
+        // Start FTP connection
         ftpClient = new FTP();
         await new Promise((resolve, reject) => {
-            ftpClient.on('ready', resolve);
+            ftpClient.on('ready', () => {
+                console.log('FTP connection established');
+                resolve();
+            });
             ftpClient.on('error', reject);
             ftpClient.connect({
                 host: config.dds[lpar].ddsbaseurl,
@@ -306,6 +451,7 @@ async function startHMRE(req, res) {
             });
         });
 
+        console.log('Starting to check for new files');
         if (continuousMonitoring) {
             await checkForNewFiles(ftpClient, mysqlConnection, startDate, null, lpar, metrics);
             startContinuousMonitoring(lpar, metrics);
@@ -313,6 +459,7 @@ async function startHMRE(req, res) {
             await checkForNewFiles(ftpClient, mysqlConnection, startDate, endDate, lpar, metrics);
             runningProcesses[lpar].isRunning = false;
         }
+        console.log('Finished checking for new files');
 
         res.json({ 
             success: true, 
@@ -325,8 +472,18 @@ async function startHMRE(req, res) {
         res.status(500).json({ success: false, message: 'Error in HMRE process', error: error.message });
     } finally {
         if (!continuousMonitoring) {
-            if (mysqlConnection) await mysqlConnection.end();
-            if (ftpClient && ftpClient.connected) ftpClient.end();
+            if (mysqlConnection) {
+                try {
+                    await mysqlConnection.end();
+                    console.log('MySQL connection closed.');
+                } catch (err) {
+                    console.error('Error closing MySQL connection:', err);
+                }
+            }
+            if (ftpClient && ftpClient.connected) {
+                ftpClient.end();
+                console.log('FTP connection closed.');
+            }
         }
     }
 }
