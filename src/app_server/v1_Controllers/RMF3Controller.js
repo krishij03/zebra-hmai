@@ -40,12 +40,6 @@ var apiml_auth = ddsconfig.apiml_auth_type;
     console.log('URL:', RMF3URL);
     console.log('Auth enabled:', ddsauth);
 
-    console.log('\n=== DDS Server Configuration ===');
-    console.log('Protocol:', ddshttp);
-    console.log('Base URL:', baseurl);
-    console.log('Port:', baseport);
-    console.log('Full URL:', RMF3URL);
-
     // Test server availability
     const testConfig = {
         timeout: 5000, // 5 second timeout
@@ -55,7 +49,7 @@ var apiml_auth = ddsconfig.apiml_auth_type;
     // Try a basic connection test first
     axios.get(`${ddshttp}://${baseurl}:${baseport}`, testConfig)
         .then(() => {
-            console.log('DDS server is reachable');
+            // console.log('DDS server is reachable');
             // Proceed with actual request
             makeActualRequest();
         })
