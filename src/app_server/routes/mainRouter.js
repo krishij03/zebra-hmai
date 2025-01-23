@@ -632,4 +632,16 @@ router.post('/dcol/clear-db', dcolController.clearDatabase);
 router.post('/dcol/stop-monitoring', dcolController.stopContinuousMonitoring);
 router.get('/dcol/running-processes', dcolController.getRunningProcesses);
 
+// Add this route handler
+router.get('/rmf1', function(req, res, next) {
+  const Zconfig = require('../../config/Zconfig.json');
+  const lpars = Object.keys(Zconfig.dds);
+  console.log("Rendering RMF1 report with lpars:", lpars);
+  res.render('RMF1Report', { 
+    title: 'RMF1 Report', 
+    lpars: lpars,
+    lparConfig: Zconfig.dds
+  });
+});
+
 module.exports = router;

@@ -111,6 +111,8 @@ const hmaiRouter = require('./app_server/routes/hmaiRouter');
 const { exit } = require('process');
 const dcolRouter = require('./app_server/routes/dcolRouter');
 const hmreRouter = require('./app_server/routes/hmreRouter');
+const cacheRouter = require('./app_server/routes/cacheRouter');
+const deviceRouter = require('./app_server/routes/deviceRouter');
 
 var app = express();
 
@@ -149,6 +151,8 @@ app.use('/rmfpp', rmfppRouter);
 app.use('/v1', v1Router);
 app.use('/dcol', dcolRouter);
 app.use('/hmre', hmreRouter);
+app.use('/cache', cacheRouter);
+app.use('/device', deviceRouter);
 
 app.use(express.static('uploads'));
 
