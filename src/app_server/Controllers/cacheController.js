@@ -188,19 +188,28 @@ async function fetchData(lpar, startDate, endDate, config) {
     }
 }
 
+function getNextDayDate(date) {
+    const nextDay = new Date(date);
+    nextDay.setDate(nextDay.getDate() + 1);
+    return nextDay.toISOString().split('T')[0];
+}
+
 async function startCache(req, res) {
     const { startDate, endDate, lpar, continuousMonitoring } = req.body;
     console.log(`startCache called with params:`, { startDate, endDate, lpar, continuousMonitoring });
 
     if (runningProcesses[lpar] && runningProcesses[lpar].isRunning) {
-        return res.status(400).json({ success: false, message: `Cache process is already running for ${lpar}` });
+        return res.status(400).json({ 
+            success: false, 
+            message: `Cache process is already running for ${lpar}` 
+        });
     }
 
     runningProcesses[lpar] = { 
         isRunning: true, 
         continuousMonitoring: continuousMonitoring,
         startDate: startDate,
-        endDate: continuousMonitoring ? null : endDate
+        endDate: continuousMonitoring ? startDate : endDate
     };
 
     let mysqlConnection;
@@ -208,12 +217,13 @@ async function startCache(req, res) {
 
     try {
         const config = require('../../config/Zconfig.json');
+        // Now use rmfmon1 config instead of hmai config
+        const rmfmon1Config = config.dds[lpar].rmfmon1;
         
-        // Create MySQL connection without database specified
         mysqlConnection = await mysql.createConnection({
-            host: config.dds[lpar].hmai.mysql.host,
-            user: config.dds[lpar].hmai.mysql.user,
-            password: config.dds[lpar].hmai.mysql.password,
+            host: rmfmon1Config.mysql.host,
+            user: rmfmon1Config.mysql.user,
+            password: rmfmon1Config.mysql.password,
             multipleStatements: true
         });
 
@@ -255,17 +265,27 @@ async function collectData(lpar, startDate, endDate, config) {
     let connection;
     try {
         connection = await mysql.createConnection({
-            host: config.dds[lpar].hmai.mysql.host,
-            user: config.dds[lpar].hmai.mysql.user,
-            password: config.dds[lpar].hmai.mysql.password,
+            host: config.dds[lpar].rmfmon1.mysql.host,
+            user: config.dds[lpar].rmfmon1.mysql.user,
+            password: config.dds[lpar].rmfmon1.mysql.password,
             database: lpar,
             multipleStatements: true
         });
 
-        const data = await fetchData(lpar, startDate, endDate, config);
+        // If endDate is null (continuous monitoring), use startDate as endDate
+        const effectiveEndDate = endDate || startDate;
+        const data = await fetchData(lpar, startDate, effectiveEndDate, config);
+        
         await connection.beginTransaction();
         await insertData(connection, data, lpar);
+        await enforceDataRetention(connection, lpar);
         await connection.commit();
+
+        // Update the startDate for next collection in continuous monitoring
+        if (!endDate && runningProcesses[lpar]) {
+            runningProcesses[lpar].startDate = getNextDayDate(startDate);
+        }
+
         console.log(`Data collection cycle completed at ${new Date().toISOString()}`);
     } catch (error) {
         if (connection) await connection.rollback();
@@ -277,15 +297,21 @@ async function collectData(lpar, startDate, endDate, config) {
 }
 
 function startContinuousMonitoring(lpar, config) {
-    const checkInterval = parseInt(config.dds[lpar].hmai.checkInterval);
+    const checkIntervalDays = parseInt(config.dds[lpar].rmfmon1.cache.checkInterval);
+    console.log(`Setting up continuous monitoring for ${lpar} with interval of ${checkIntervalDays} days`);
 
     monitoringIntervals[lpar] = setInterval(async () => {
         try {
-            await collectData(lpar, runningProcesses[lpar].startDate, null, config);
+            const currentStartDate = runningProcesses[lpar].startDate;
+            console.log(`Collecting data for ${lpar} for date: ${currentStartDate}`);
+            
+            await collectData(lpar, currentStartDate, null, config);
+            
+            console.log(`Next collection for ${lpar} will be for date: ${runningProcesses[lpar].startDate}`);
         } catch (error) {
             console.error(`Error in continuous monitoring for ${lpar}:`, error);
         }
-    }, checkInterval * 60000);
+    }, checkIntervalDays * 24 * 60 * 60 * 1000); // Convert days to milliseconds
 }
 
 async function clearDatabase(req, res) {
@@ -295,9 +321,9 @@ async function clearDatabase(req, res) {
 
     try {
         connection = await mysql.createConnection({
-            host: config.dds[lpar].hmai.mysql.host,
-            user: config.dds[lpar].hmai.mysql.user,
-            password: config.dds[lpar].hmai.mysql.password,
+            host: config.dds[lpar].rmfmon1.mysql.host,
+            user: config.dds[lpar].rmfmon1.mysql.user,
+            password: config.dds[lpar].rmfmon1.mysql.password,
             database: lpar
         });
 
@@ -348,6 +374,23 @@ function getRunningProcesses(req, res) {
         };
     }
     res.json(runningProcessesInfo);
+}
+
+async function enforceDataRetention(connection, lpar) {
+    try {
+        const config = require('../../config/Zconfig.json');
+        const retentionDays = config.dds[lpar].rmfmon1.cache.dataRetention;
+
+        if (retentionDays && retentionDays > 0) {
+            const deleteQuery = `DELETE FROM cache_subsystem_activity 
+                               WHERE timestamp < DATE_SUB(NOW(), INTERVAL ${retentionDays} DAY)`;
+            await connection.query(deleteQuery);
+            console.log(`Applied ${retentionDays} days retention policy for cache in ${lpar}`);
+        }
+    } catch (error) {
+        console.error('Error enforcing cache data retention:', error);
+        throw error;
+    }
 }
 
 module.exports = {

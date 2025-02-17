@@ -57,7 +57,29 @@ function updateconfig(){
     dbPassword: $(`#dbPassword`).val(),
     authSource: $(`#authSource`).val(),
     apimlauth: $(`#apimlauth`).val(),
-    dds: {}
+    dds: {},
+    rmfmon1: {
+      mysql: {
+        host: $(`#rmfmon1MysqlHost_${selectedLPAR}`).val(),
+        user: $(`#rmfmon1MysqlUser_${selectedLPAR}`).val(),
+        password: $(`#rmfmon1MysqlPassword_${selectedLPAR}`).val()
+      },
+      cache: {
+        dataRetention: $(`#retentionCache_${selectedLPAR}`).val(),
+        checkInterval: $(`#cacheCheckInterval_${selectedLPAR}`).val(),
+        startDate: $(`#cacheStartDate_${selectedLPAR}`).val(),
+        continuousMonitoring: $(`#cacheContinuousMonitoring_${selectedLPAR}`).is(':checked')
+      },
+      device: {
+        dataRetention: $(`#retentionDevice_${selectedLPAR}`).val(),
+        checkInterval: $(`#deviceCheckInterval_${selectedLPAR}`).val(),
+        startDate: $(`#deviceStartDate_${selectedLPAR}`).val(),
+        continuousMonitoring: $(`#deviceContinuousMonitoring_${selectedLPAR}`).is(':checked')
+      },
+      checkInterval: $(`#rmfmon1CheckInterval_${selectedLPAR}`).val(),
+      defaultStartDate: $(`#rmfmon1DefaultStartDate_${selectedLPAR}`).val(),
+      continuousMonitoring: $(`#rmfmon1ContinuousMonitoring_${selectedLPAR}`).is(':checked')
+    }
   };
 
   // Add configuration for the selected LPAR
@@ -90,7 +112,11 @@ function updateconfig(){
         mprank20: $(`#retentionMprank20_${selectedLPAR}`).val(),
         pgrp: $(`#retentionPgrp_${selectedLPAR}`).val(),
         port: $(`#retentionPort_${selectedLPAR}`).val()
-    },
+      },
+      rmfmon1Retention: {
+        cache: $(`#retentionCache_${selectedLPAR}`).val(),
+        device: $(`#retentionDevice_${selectedLPAR}`).val()
+      },
       checkInterval: $(`#hmaiCheckInterval_${selectedLPAR}`).val(),
       defaultStartDate: $(`#hmaiDefaultStartDate_${selectedLPAR}`).val(),
       continuousMonitoring: $(`#hmaiContinuousMonitoring_${selectedLPAR}`).is(':checked')
@@ -103,6 +129,10 @@ function updateconfig(){
         host: $(`#hmreMysqlHost_${selectedLPAR}`).val(),
         user: $(`#hmreMysqlUser_${selectedLPAR}`).val(),
         password: $(`#hmreMysqlPassword_${selectedLPAR}`).val()
+      },
+      dataRetention: {
+        hmrecsvs: $(`#retentionHmrecsvs_${selectedLPAR}`).val(),
+        hmrecsvd: $(`#retentionHmrecsvd_${selectedLPAR}`).val()
       },
       checkInterval: $(`#hmreCheckInterval_${selectedLPAR}`).val(),
       defaultStartDate: $(`#hmreDefaultStartDate_${selectedLPAR}`).val(),
@@ -117,9 +147,34 @@ function updateconfig(){
         user: $(`#dcolMysqlUser_${selectedLPAR}`).val(),
         password: $(`#dcolMysqlPassword_${selectedLPAR}`).val()
       },
+      dataRetention: {
+        hmaidcol: $(`#retentionHmaidcol_${selectedLPAR}`).val()
+      },
       checkInterval: $(`#dcolCheckInterval_${selectedLPAR}`).val(),
       defaultStartDate: $(`#dcolDefaultStartDate_${selectedLPAR}`).val(),
       continuousMonitoring: $(`#dcolContinuousMonitoring_${selectedLPAR}`).is(':checked')
+    },
+    rmfmon1: {
+      mysql: {
+        host: $(`#rmfmon1MysqlHost_${selectedLPAR}`).val(),
+        user: $(`#rmfmon1MysqlUser_${selectedLPAR}`).val(),
+        password: $(`#rmfmon1MysqlPassword_${selectedLPAR}`).val()
+      },
+      cache: {
+        dataRetention: $(`#retentionCache_${selectedLPAR}`).val(),
+        checkInterval: $(`#cacheCheckInterval_${selectedLPAR}`).val(),
+        startDate: $(`#cacheStartDate_${selectedLPAR}`).val(),
+        continuousMonitoring: $(`#cacheContinuousMonitoring_${selectedLPAR}`).is(':checked')
+      },
+      device: {
+        dataRetention: $(`#retentionDevice_${selectedLPAR}`).val(),
+        checkInterval: $(`#deviceCheckInterval_${selectedLPAR}`).val(),
+        startDate: $(`#deviceStartDate_${selectedLPAR}`).val(),
+        continuousMonitoring: $(`#deviceContinuousMonitoring_${selectedLPAR}`).is(':checked')
+      },
+      checkInterval: $(`#rmfmon1CheckInterval_${selectedLPAR}`).val(),
+      defaultStartDate: $(`#rmfmon1DefaultStartDate_${selectedLPAR}`).val(),
+      continuousMonitoring: $(`#rmfmon1ContinuousMonitoring_${selectedLPAR}`).is(':checked')
     }
   };
 
@@ -176,7 +231,11 @@ function updatedds(key) {
           mprank20: $(`#retentionMprank20_${key}`).val(),
           pgrp: $(`#retentionPgrp_${key}`).val(),
           port: $(`#retentionPort_${key}`).val()
-      },
+        },
+        rmfmon1Retention: {
+          cache: $(`#retentionCache_${key}`).val(),
+          device: $(`#retentionDevice_${key}`).val()
+        },
         checkInterval: $(`#hmaiCheckInterval_${key}`).val(),
         defaultStartDate: $(`#hmaiDefaultStartDate_${key}`).val(),
         continuousMonitoring: $(`#hmaiContinuousMonitoring_${key}`).is(':checked')
@@ -189,6 +248,10 @@ function updatedds(key) {
           host: $(`#hmreMysqlHost_${key}`).val(),
           user: $(`#hmreMysqlUser_${key}`).val(),
           password: $(`#hmreMysqlPassword_${key}`).val()
+        },
+        dataRetention: {
+          hmrecsvs: $(`#retentionHmrecsvs_${key}`).val(),
+          hmrecsvd: $(`#retentionHmrecsvd_${key}`).val()
         },
         checkInterval: $(`#hmreCheckInterval_${key}`).val(),
         defaultStartDate: $(`#hmreDefaultStartDate_${key}`).val(),
@@ -203,9 +266,32 @@ function updatedds(key) {
           user: $(`#dcolMysqlUser_${key}`).val(),
           password: $(`#dcolMysqlPassword_${key}`).val()
         },
+        dataRetention: {
+          hmaidcol: $(`#retentionHmaidcol_${key}`).val()
+        },
         checkInterval: $(`#dcolCheckInterval_${key}`).val(),
         defaultStartDate: $(`#dcolDefaultStartDate_${key}`).val(),
         continuousMonitoring: $(`#dcolContinuousMonitoring_${key}`).is(':checked')
+      },
+      rmfmon1: {
+        mysql: {
+          host: $(`#rmfmon1MysqlHost_${key}`).val(),
+          user: $(`#rmfmon1MysqlUser_${key}`).val(),
+          password: $(`#rmfmon1MysqlPassword_${key}`).val()
+        },
+        cache: {
+          checkInterval: $(`#cacheCheckInterval_${key}`).val(),
+          dataRetention: $(`#retentionCache_${key}`).val(),
+          startDate: $(`#cacheStartDate_${key}`).val(),
+          continuousMonitoring: $(`#cacheContinuousMonitoring_${key}`).is(':checked')
+        },
+        device: {
+          checkInterval: $(`#deviceCheckInterval_${key}`).val(),
+          dataRetention: $(`#retentionDevice_${key}`).val(),
+          startDate: $(`#deviceStartDate_${key}`).val(),
+          continuousMonitoring: $(`#deviceContinuousMonitoring_${key}`).is(':checked')
+        },
+        continuousMonitoring: $(`#rmfmon1ContinuousMonitoring_${key}`).is(':checked')
       }
     }
   };
@@ -232,67 +318,106 @@ function updatedds(key) {
 }
 
 function savedds() {
+  // Get the SYSID from the input field
+  const sysid = $('#sysid').val();
+  
+  if (!sysid) {
+    alert('Please enter a SYSID');
+    return;
+  }
+
   var data = {
-    sysid: $(`#sysid`).val(),
+    sysid: sysid,
     update: {
-      ddshhttptype: $(`#dds_http`).val(),
-      ddsbaseurl: $(`#ddsIP`).val(),
-      ddsbaseport: $(`#ddsport`).val(),
-      ddsauth: $(`#ddsauth`).val(),
-      ddsuser: $(`#ddsuser`).val(),
-      ddspwd: $(`#ddspwd`).val(),
-      rmf3filename: $(`#rmf3filename`).val(),
-      rmfppfilename: $(`#rmfppfilename`).val(),
-      mvsResource: $(`#mvsResource`).val(),
-      PCI: $(`#PCI`).val(),
-      useMongo: $(`#useMongo`).val(),
-      usePrometheus: $(`#usePrometheus`).val(),
+      ddshhttptype: $('#dds_http').val(),
+      ddsbaseurl: $('#ddsIP').val(),
+      ddsbaseport: $('#ddsport').val(),
+      ddsauth: $('#ddsauth').val(),
+      ddsuser: $('#ddsuser').val(),
+      ddspwd: $('#ddspwd').val(),
+      rmf3filename: $('#rmf3filename').val(),
+      rmfppfilename: $('#rmfppfilename').val(),
+      mvsResource: $('#mvsResource').val(),
+      PCI: $('#PCI').val(),
+      useMongo: $('#useMongo').val(),
+      usePrometheus: $('#usePrometheus').val(),
       hmai: {
         ftp: {
-          directory: $(`#hmaiFtpDirectory`).val()
+          directory: $('#hmaiFtpDirectory').val()
         },
         mysql: {
-          host: $(`#hmaiMysqlHost`).val(),
-          user: $(`#hmaiMysqlUser`).val(),
-          password: $(`#hmaiMysqlPassword`).val()
+          host: $('#hmaiMysqlHost').val(),
+          user: $('#hmaiMysqlUser').val(),
+          password: $('#hmaiMysqlPassword').val()
         },
         dataRetention: {
-          clpr: $(`#retentionClpr`).val(),
-          ldev: $(`#retentionLdev`).val(),
-          mpb: $(`#retentionMpb`).val(),
-          mprank20: $(`#retentionMprank20`).val(),
-          pgrp: $(`#retentionPgrp`).val(),
-          port: $(`#retentionPort`).val()
-      },
-        checkInterval: $(`#hmaiCheckInterval`).val(),
-        defaultStartDate: $(`#hmaiDefaultStartDate`).val(),
-        continuousMonitoring: $(`#hmaiContinuousMonitoring`).is(':checked')
+          clpr: $('#retentionClpr').val(),
+          ldev: $('#retentionLdev').val(),
+          mpb: $('#retentionMpb').val(),
+          mprank20: $('#retentionMprank20').val(),
+          pgrp: $('#retentionPgrp').val(),
+          port: $('#retentionPort').val()
+        },
+        rmfmon1Retention: {
+          cache: $('#retentionCache').val(),
+          device: $('#retentionDevice').val()
+        },
+        checkInterval: $('#hmaiCheckInterval').val(),
+        defaultStartDate: $('#hmaiDefaultStartDate').val(),
+        continuousMonitoring: $('#hmaiContinuousMonitoring').is(':checked')
       },
       hmre: {
         ftp: {
-          directory: $(`#hmreFtpDirectory`).val()
+          directory: $('#hmreFtpDirectory').val()
         },
         mysql: {
-          host: $(`#hmreMysqlHost`).val(),
-          user: $(`#hmreMysqlUser`).val(),
-          password: $(`#hmreMysqlPassword`).val()
+          host: $('#hmreMysqlHost').val(),
+          user: $('#hmreMysqlUser').val(),
+          password: $('#hmreMysqlPassword').val()
         },
-        checkInterval: $(`#hmreCheckInterval`).val(),
-        defaultStartDate: $(`#hmreDefaultStartDate`).val(),
-        continuousMonitoring: $(`#hmreContinuousMonitoring`).is(':checked')
+        dataRetention: {
+          hmrecsvs: $('#retentionHmrecsvs').val(),
+          hmrecsvd: $('#retentionHmrecsvd').val()
+        },
+        checkInterval: $('#hmreCheckInterval').val(),
+        defaultStartDate: $('#hmreDefaultStartDate').val(),
+        continuousMonitoring: $('#hmreContinuousMonitoring').is(':checked')
       },
       dcol: {
         ftp: {
-          directory: $(`#dcolFtpDirectory`).val()
+          directory: $('#dcolFtpDirectory').val()
         },
         mysql: {
-          host: $(`#dcolMysqlHost`).val(),
-          user: $(`#dcolMysqlUser`).val(),
-          password: $(`#dcolMysqlPassword`).val()
+          host: $('#dcolMysqlHost').val(),
+          user: $('#dcolMysqlUser').val(),
+          password: $('#dcolMysqlPassword').val()
         },
-        checkInterval: $(`#dcolCheckInterval`).val(),
-        defaultStartDate: $(`#dcolDefaultStartDate`).val(),
-        continuousMonitoring: $(`#dcolContinuousMonitoring`).is(':checked')
+        dataRetention: {
+          hmaidcol: $('#retentionHmaidcol').val()
+        },
+        checkInterval: $('#dcolCheckInterval').val(),
+        defaultStartDate: $('#dcolDefaultStartDate').val(),
+        continuousMonitoring: $('#dcolContinuousMonitoring').is(':checked')
+      },
+      rmfmon1: {
+        mysql: {
+          host: $('#rmfmon1MysqlHost').val(),
+          user: $('#rmfmon1MysqlUser').val(),
+          password: $('#rmfmon1MysqlPassword').val()
+        },
+        cache: {
+          checkInterval: $('#cacheCheckInterval').val(),
+          dataRetention: $('#retentionCache').val(),
+          startDate: $('#cacheStartDate').val(),
+          continuousMonitoring: $('#cacheContinuousMonitoring').is(':checked')
+        },
+        device: {
+          checkInterval: $('#deviceCheckInterval').val(),
+          dataRetention: $('#retentionDevice').val(),
+          startDate: $('#deviceStartDate').val(),
+          continuousMonitoring: $('#deviceContinuousMonitoring').is(':checked')
+        },
+        continuousMonitoring: $('#rmfmon1ContinuousMonitoring').is(':checked')
       }
     }
   };
@@ -317,6 +442,7 @@ function savedds() {
     alert("Error saving DDS. Please check the console for more details.");
   });
 }
+
 function deletedds(key) {
   var txt;
   var r = confirm(`Are you sure you want to delete ${key}`);

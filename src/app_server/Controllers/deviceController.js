@@ -23,19 +23,38 @@ function parseTime(timeString) {
 }
 
 function parseTimestamp(timeString) {
-    // Format: MM/DD/YYYY-HH.MM.SS
-    const [datePart, timePart] = timeString.split('-');
-    const [month, day, year] = datePart.split('/');
-    const [hour, minute, second] = timePart.split('.');
+    if (!timeString || typeof timeString !== 'string') {
+        console.error('Invalid timestamp input:', timeString);
+        return null;
+    }
 
-    const formattedYear = year;
-    const formattedMonth = month.padStart(2, '0');
-    const formattedDay = day.padStart(2, '0');
-    const formattedHour = hour.padStart(2, '0');
-    const formattedMinute = minute.padStart(2, '0');
-    const formattedSecond = second.padStart(2, '0');
+    try {
+        const [datePart, timePart] = timeString.split('-');
+        if (!datePart || !timePart) {
+            console.error('Invalid timestamp format:', timeString);
+            return null;
+        }
 
-    return `${formattedYear}-${formattedMonth}-${formattedDay} ${formattedHour}:${formattedMinute}:${formattedSecond}`;
+        const [month, day, year] = datePart.split('/');
+        const [hour, minute, second] = timePart.split('.');
+
+        if (!month || !day || !year || !hour || !minute || !second) {
+            console.error('Invalid timestamp parts:', timeString);
+            return null;
+        }
+
+        const formattedYear = year;
+        const formattedMonth = month.padStart(2, '0');
+        const formattedDay = day.padStart(2, '0');
+        const formattedHour = hour.padStart(2, '0');
+        const formattedMinute = minute.padStart(2, '0');
+        const formattedSecond = second.padStart(2, '0');
+
+        return `${formattedYear}-${formattedMonth}-${formattedDay} ${formattedHour}:${formattedMinute}:${formattedSecond}`;
+    } catch (error) {
+        console.error('Error parsing timestamp:', error);
+        return null;
+    }
 }
 
 function replaceNulls(obj) {
@@ -95,77 +114,99 @@ async function insertData(connection, data, lpar) {
         // Initialize processedTimestamps array if it doesn't exist
         const processedTimestamps = memory.processedTimestamps || [];
         let newDataInserted = false;
-        let distinctTimestamps = new Set(); // Track distinct timestamps for this run
+        let distinctTimestamps = new Set();
+
+        // Add validation for data structure
+        if (!data || typeof data !== 'object') {
+            console.log('No valid data to insert');
+            return;
+        }
 
         for (const [rootVar, rootData] of Object.entries(data)) {
-            const timestampStr = parseTimestamp(rootData.Timestamp);
-            
-            // Skip if timestamp was processed in previous runs or in current run
-            if (processedTimestamps.includes(timestampStr) || distinctTimestamps.has(timestampStr)) {
-                console.log(`Skipping already processed timestamp ${timestampStr}`);
+            // Add validation for timestamp
+            if (!rootData || !rootData.Timestamp) {
+                console.log(`Invalid data structure for root variable ${rootVar}`);
                 continue;
             }
-
-            distinctTimestamps.add(timestampStr); // Add to current run's set
-
-            const daData = rootData['Direct Access Device Activity'];
-            if (!daData) {
-                console.log(`No Direct Access Device Activity data found for root variable ${rootVar}`);
-                continue;
-            }
-
-            const totalSamples = parseInt(daData['Total Samples']) || null;
-            const iodfNameSuffix = daData['IODF Name Suffix'] || null;
-            const iodfCreationDate = daData['IODF Creation Date'] ? parseDate(daData['IODF Creation Date']) : null;
-            const iodfCreationTime = daData['IODF Creation Time'] ? parseTime(daData['IODF Creation Time']) : null;
-            const configurationState = daData['Configuration State'] || null;
-
-            const infoData = daData['Info'] || [];
-            const storageGroups = [];
-            const deviceNumbers = [];
-            const volumeSerialNumbers = [];
-
-            for (const item of infoData) {
-                if (item['Storage Group']) storageGroups.push(item['Storage Group']);
-                if (item['Device Number']) deviceNumbers.push(item['Device Number']);
-                if (item['Volume Serial Number']) volumeSerialNumbers.push(item['Volume Serial Number']);
-            }
-
-            const insertData = [
-                parseInt(rootVar),
-                rootData.Report || null,
-                rootData.System || null,
-                timestampStr,
-                totalSamples,
-                iodfNameSuffix,
-                iodfCreationDate,
-                iodfCreationTime,
-                configurationState,
-                JSON.stringify(replaceNulls(infoData)),
-                JSON.stringify(storageGroups),
-                JSON.stringify(deviceNumbers),
-                JSON.stringify(volumeSerialNumbers)
-            ];
 
             try {
-                await connection.query(`
-                    INSERT INTO device_activity_report (
-                        root_variable, report, \`system\`, \`timestamp\`,
-                        total_samples, iodf_name_suffix, iodf_creation_date,
-                        iodf_creation_time, configuration_state, info,
-                        storage_groups, device_numbers, volume_serial_numbers
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                `, insertData);
+                const timestampStr = parseTimestamp(rootData.Timestamp);
+                
+                if (!timestampStr) {
+                    console.log(`Invalid timestamp format for ${rootData.Timestamp}`);
+                    continue;
+                }
 
-                newDataInserted = true;
+                // Skip if timestamp was processed in previous runs or in current run
+                if (processedTimestamps.includes(timestampStr) || distinctTimestamps.has(timestampStr)) {
+                    console.log(`Skipping already processed timestamp ${timestampStr}`);
+                    continue;
+                }
+
+                distinctTimestamps.add(timestampStr);
+
+                const daData = rootData['Direct Access Device Activity'];
+                if (!daData) {
+                    console.log(`No Direct Access Device Activity data found for root variable ${rootVar}`);
+                    continue;
+                }
+
+                const totalSamples = parseInt(daData['Total Samples']) || null;
+                const iodfNameSuffix = daData['IODF Name Suffix'] || null;
+                const iodfCreationDate = daData['IODF Creation Date'] ? parseDate(daData['IODF Creation Date']) : null;
+                const iodfCreationTime = daData['IODF Creation Time'] ? parseTime(daData['IODF Creation Time']) : null;
+                const configurationState = daData['Configuration State'] || null;
+
+                const infoData = daData['Info'] || [];
+                const storageGroups = [];
+                const deviceNumbers = [];
+                const volumeSerialNumbers = [];
+
+                for (const item of infoData) {
+                    if (item['Storage Group']) storageGroups.push(item['Storage Group']);
+                    if (item['Device Number']) deviceNumbers.push(item['Device Number']);
+                    if (item['Volume Serial Number']) volumeSerialNumbers.push(item['Volume Serial Number']);
+                }
+
+                const insertData = [
+                    parseInt(rootVar),
+                    rootData.Report || null,
+                    rootData.System || null,
+                    timestampStr,
+                    totalSamples,
+                    iodfNameSuffix,
+                    iodfCreationDate,
+                    iodfCreationTime,
+                    configurationState,
+                    JSON.stringify(replaceNulls(infoData)),
+                    JSON.stringify(storageGroups),
+                    JSON.stringify(deviceNumbers),
+                    JSON.stringify(volumeSerialNumbers)
+                ];
+
+                try {
+                    await connection.query(`
+                        INSERT INTO device_activity_report (
+                            root_variable, report, \`system\`, \`timestamp\`,
+                            total_samples, iodf_name_suffix, iodf_creation_date,
+                            iodf_creation_time, configuration_state, info,
+                            storage_groups, device_numbers, volume_serial_numbers
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    `, insertData);
+
+                    newDataInserted = true;
+                } catch (error) {
+                    console.error('Error inserting data:', error);
+                    throw error;
+                }
             } catch (error) {
-                console.error('Error inserting data:', error);
-                throw error;
+                console.error(`Error processing data for root variable ${rootVar}:`, error);
+                continue; // Skip this entry and continue with others
             }
         }
 
+        // Update memory file if new data was inserted
         if (newDataInserted) {
-            // Update memory file with only distinct timestamps
             const updatedTimestamps = [...new Set([...processedTimestamps, ...distinctTimestamps])];
             await new Promise((resolve, reject) => {
                 deviceJSONController.writeLparData(lpar, { 
@@ -193,6 +234,17 @@ async function fetchData(lpar, startDate, endDate, config) {
         const response = await axios.get(url, {
             timeout: 300000
         });
+
+        // Check if response contains error XML
+        if (typeof response.data === 'string' && response.data.includes('GPM0743E')) {
+            throw new Error('Data request too large. Try reducing the time range.');
+        }
+
+        // Check if response data is valid
+        if (!response.data || typeof response.data !== 'object') {
+            throw new Error('Invalid response data format');
+        }
+
         return response.data;
     } catch (error) {
         console.error('Error fetching data:', error);
@@ -200,19 +252,28 @@ async function fetchData(lpar, startDate, endDate, config) {
     }
 }
 
+function getNextDayDate(date) {
+    const nextDay = new Date(date);
+    nextDay.setDate(nextDay.getDate() + 1);
+    return nextDay.toISOString().split('T')[0];
+}
+
 async function startDevice(req, res) {
     const { startDate, endDate, lpar, continuousMonitoring } = req.body;
     console.log(`startDevice called with params:`, { startDate, endDate, lpar, continuousMonitoring });
 
     if (runningProcesses[lpar] && runningProcesses[lpar].isRunning) {
-        return res.status(400).json({ success: false, message: `Device process is already running for ${lpar}` });
+        return res.status(400).json({ 
+            success: false, 
+            message: `Device process is already running for ${lpar}` 
+        });
     }
 
     runningProcesses[lpar] = { 
         isRunning: true, 
         continuousMonitoring: continuousMonitoring,
         startDate: startDate,
-        endDate: continuousMonitoring ? null : endDate
+        endDate: continuousMonitoring ? startDate : endDate
     };
 
     let mysqlConnection;
@@ -220,11 +281,12 @@ async function startDevice(req, res) {
 
     try {
         const config = require('../../config/Zconfig.json');
+        const rmfmon1Config = config.dds[lpar].rmfmon1;
         
         mysqlConnection = await mysql.createConnection({
-            host: config.dds[lpar].hmai.mysql.host,
-            user: config.dds[lpar].hmai.mysql.user,
-            password: config.dds[lpar].hmai.mysql.password,
+            host: rmfmon1Config.mysql.host,
+            user: rmfmon1Config.mysql.user,
+            password: rmfmon1Config.mysql.password,
             multipleStatements: true
         });
 
@@ -265,17 +327,27 @@ async function collectData(lpar, startDate, endDate, config) {
     let connection;
     try {
         connection = await mysql.createConnection({
-            host: config.dds[lpar].hmai.mysql.host,
-            user: config.dds[lpar].hmai.mysql.user,
-            password: config.dds[lpar].hmai.mysql.password,
+            host: config.dds[lpar].rmfmon1.mysql.host,
+            user: config.dds[lpar].rmfmon1.mysql.user,
+            password: config.dds[lpar].rmfmon1.mysql.password,
             database: lpar,
             multipleStatements: true
         });
 
-        const data = await fetchData(lpar, startDate, endDate, config);
+        // If endDate is null (continuous monitoring), use startDate as endDate
+        const effectiveEndDate = endDate || startDate;
+        const data = await fetchData(lpar, startDate, effectiveEndDate, config);
+        
         await connection.beginTransaction();
         await insertData(connection, data, lpar);
+        await enforceDataRetention(connection, lpar);
         await connection.commit();
+
+        // Update the startDate for next collection in continuous monitoring
+        if (!endDate && runningProcesses[lpar]) {
+            runningProcesses[lpar].startDate = getNextDayDate(startDate);
+        }
+
         console.log(`Data collection cycle completed at ${new Date().toISOString()}`);
     } catch (error) {
         if (connection) await connection.rollback();
@@ -287,15 +359,21 @@ async function collectData(lpar, startDate, endDate, config) {
 }
 
 function startContinuousMonitoring(lpar, config) {
-    const checkInterval = parseInt(config.dds[lpar].hmai.checkInterval);
+    const checkIntervalDays = parseInt(config.dds[lpar].rmfmon1.device.checkInterval);
+    console.log(`Setting up continuous monitoring for ${lpar} with interval of ${checkIntervalDays} days`);
 
     monitoringIntervals[lpar] = setInterval(async () => {
         try {
-            await collectData(lpar, runningProcesses[lpar].startDate, null, config);
+            const currentStartDate = runningProcesses[lpar].startDate;
+            console.log(`Collecting data for ${lpar} for date: ${currentStartDate}`);
+            
+            await collectData(lpar, currentStartDate, null, config);
+            
+            console.log(`Next collection for ${lpar} will be for date: ${runningProcesses[lpar].startDate}`);
         } catch (error) {
             console.error(`Error in continuous monitoring for ${lpar}:`, error);
         }
-    }, checkInterval * 60000);
+    }, checkIntervalDays * 24 * 60 * 60 * 1000); // Convert days to milliseconds
 }
 
 async function clearDatabase(req, res) {
@@ -358,6 +436,23 @@ function getRunningProcesses(req, res) {
         };
     }
     res.json(runningProcessesInfo);
+}
+
+async function enforceDataRetention(connection, lpar) {
+    try {
+        const config = require('../../config/Zconfig.json');
+        const retentionDays = config.dds[lpar].rmfmon1.device.dataRetention;
+
+        if (retentionDays && retentionDays > 0) {
+            const deleteQuery = `DELETE FROM device_activity_report 
+                               WHERE timestamp < DATE_SUB(NOW(), INTERVAL ${retentionDays} DAY)`;
+            await connection.query(deleteQuery);
+            console.log(`Applied ${retentionDays} days retention policy for device in ${lpar}`);
+        }
+    } catch (error) {
+        console.error('Error enforcing device data retention:', error);
+        throw error;
+    }
 }
 
 module.exports = {

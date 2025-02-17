@@ -488,8 +488,33 @@ async function startHMRE(req, res) {
     }
 }
 
-async function startContinuousMonitoring(lpar, metrics) {
-    const checkInterval = parseInt(config.dds[lpar].hmre.checkInterval);
+async function enforceDataRetention(connection, lpar) {
+    try {
+        const retentionConfig = config.dds[lpar].hmre.dataRetention;
+
+        // HMRE has hmrecsvs and hmrecsvd metrics
+        const metrics = {
+            'hmrecsvs': retentionConfig.hmrecsvs,
+            'hmrecsvd': retentionConfig.hmrecsvd
+        };
+
+        for (const [table, retentionDays] of Object.entries(metrics)) {
+            if (retentionDays && retentionDays > 0) {
+                const deleteQuery = `DELETE FROM ${table} 
+                                   WHERE timestamp < DATE_SUB(NOW(), INTERVAL ${retentionDays} DAY)`;
+                await connection.query(deleteQuery);
+                console.log(`Applied ${retentionDays} days retention policy for ${table} in ${lpar}`);
+            }
+        }
+    } catch (error) {
+        console.error('Error enforcing HMRE data retention:', error);
+        throw error;
+    }
+}
+
+function startContinuousMonitoring(lpar, metrics) {
+    const checkIntervalMinutes = parseInt(config.dds[lpar].hmre.checkInterval);
+    console.log(`Setting up continuous monitoring for ${lpar} with interval of ${checkIntervalMinutes} minutes`);
 
     monitoringIntervals[lpar] = setInterval(async () => {
         let mysqlConnection;
@@ -530,6 +555,7 @@ async function startContinuousMonitoring(lpar, metrics) {
             }
 
             await checkForNewFiles(ftpClient, mysqlConnection, lastProcessedDate, null, lpar, metrics);
+            await enforceDataRetention(mysqlConnection, lpar);
 
         } catch (error) {
             console.error(`Error in continuous monitoring for ${lpar}:`, error);
@@ -537,7 +563,7 @@ async function startContinuousMonitoring(lpar, metrics) {
             if (mysqlConnection) await mysqlConnection.end();
             if (ftpClient) ftpClient.end();
         }
-    }, checkInterval * 60000); // Convert minutes to milliseconds
+    }, checkIntervalMinutes * 60000); // Convert minutes to milliseconds
 }
 
 async function clearDatabase(req, res) {

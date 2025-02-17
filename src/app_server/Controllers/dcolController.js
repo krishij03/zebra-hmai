@@ -1393,35 +1393,40 @@ async function startDCOL(req, res) {
     }
 }
 
+// Add enforceDataRetention function with hardcoded 1-day retention
+async function enforceDataRetention(connection, lpar) {
+    try {
+        const retentionDays = 1; // Hardcoded 1-day retention
+        const tables = ['dcollect_a', 'dcollect_ai', 'dcollect_bc', 'dcollect_d', 
+                       'dcollect_dc', 'dcollect_lb', 'dcollect_mc', 'dcollect_sc', 
+                       'dcollect_sg', 'dcollect_v', 'dcollect_vl'];
+
+        for (const table of tables) {
+            const deleteQuery = `DELETE FROM ${table} 
+                               WHERE timestamp < DATE_SUB(NOW(), INTERVAL ${retentionDays} DAY)`;
+            await connection.query(deleteQuery);
+            console.log(`Applied ${retentionDays} day retention policy for ${table} in ${lpar}`);
+        }
+    } catch (error) {
+        console.error('Error enforcing DCOL data retention:', error);
+        throw error;
+    }
+}
+
+// Update startContinuousMonitoring function
 function startContinuousMonitoring(lpar, metrics) {
-    const checkInterval = parseInt(config.dds[lpar].dcol.checkInterval);
+    const checkIntervalMinutes = parseInt(config.dds[lpar].dcol.checkInterval);
+    console.log(`Setting up continuous monitoring for ${lpar} with interval of ${checkIntervalMinutes} minutes`);
 
     monitoringIntervals[lpar] = setInterval(async () => {
         let mysqlConnection;
         let ftpClient;
 
         try {
-            mysqlConnection = await mysql.createConnection({
-                host: config.dds[lpar].dcol.mysql.host,
-                user: config.dds[lpar].dcol.mysql.user,
-                password: config.dds[lpar].dcol.mysql.password,
-                database: lpar,
-                multipleStatements: true
-            });
-
-            ftpClient = new FTP();
-            await new Promise((resolve, reject) => {
-                ftpClient.on('ready', resolve);
-                ftpClient.on('error', reject);
-                ftpClient.connect({
-                    host: config.dds[lpar].ddsbaseurl,
-                    user: config.dds[lpar].ddsuser,
-                    password: config.dds[lpar].ddspwd,
-                });
-            });
+            // ... existing connection setup code ...
 
             const visitedDirs = await new Promise((resolve, reject) => {
-                dcolJSONcontroller.readLparData(lpar, (err, data) => {
+                dcolJSONController.readLparData(lpar, (err, data) => {
                     if (err) reject(err);
                     else resolve(data);
                 });
@@ -1432,6 +1437,7 @@ function startContinuousMonitoring(lpar, metrics) {
                 : runningProcesses[lpar].startDate;
 
             await checkForNewFiles(ftpClient, mysqlConnection, lastProcessedDate, null, lpar, metrics);
+            await enforceDataRetention(mysqlConnection, lpar);
 
         } catch (error) {
             console.error(`Error in continuous monitoring for ${lpar}:`, error);
@@ -1439,7 +1445,7 @@ function startContinuousMonitoring(lpar, metrics) {
             if (mysqlConnection) await mysqlConnection.end();
             if (ftpClient) ftpClient.end();
         }
-    }, checkInterval * 60000);
+    }, checkIntervalMinutes * 60000); // Convert minutes to milliseconds
 }
 
 async function clearDatabase(req, res) {

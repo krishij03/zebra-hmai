@@ -148,6 +148,19 @@ block header
                                         input.form-check-input(type="checkbox", id=`hmreContinuousMonitoring_${key}` checked=(val.hmre && val.hmre.continuousMonitoring))
                                         label.form-check-label(for=`hmreContinuousMonitoring_${key}`) Continuous Monitoring
                                 .row
+                                    h5(class='hdd', style={"margin-top":"20px"}) HMRE Data Retention Configuration
+                                    hr
+                                    .row
+                                        h6(class='hdd', style={"margin-top":"20px"}) Data retention setting specifies the number of days to keep data for each metric. Setting to 0 retains all data indefinitely.
+                                        hr
+                                    .row
+                                        .col-md-6
+                                            p(style={"margin-top":"10px", "margin-right": "10px"}) HMRE Summary CSV Retention (days)
+                                            input(type="number" class="form-control" id=`retentionHmrecsvs_${key}` style={"margin-right": "10px"} value=`${val.hmre && val.hmre.dataRetention ? val.hmre.dataRetention.hmrecsvs : ''}`)
+                                        .col-md-6
+                                            p(style={"margin-top":"10px", "margin-right": "10px"}) HMRE Detailed CSV Retention (days)
+                                            input(type="number" class="form-control" id=`retentionHmrecsvd_${key}` style={"margin-right": "10px"} value=`${val.hmre && val.hmre.dataRetention ? val.hmre.dataRetention.hmrecsvd : ''}`)
+                                .row
                                     h5(class='hdd', style={"margin-top":"20px"}) DCOL Configuration
                                     hr
                                 .row
@@ -169,7 +182,55 @@ block header
                                         .form-check
                                         input.form-check-input(type="checkbox", id=`dcolContinuousMonitoring_${key}` checked=(val.dcol && val.dcol.continuousMonitoring))
                                         label.form-check-label(for=`dcolContinuousMonitoring_${key}`) Continuous Monitoring
-                                .row 
+                                .row
+                                    h5(class='hdd', style={"margin-top":"20px"}) HMAI DCOLLECT Data Retention Configuration
+                                    hr
+                                    .row
+                                        h6(class='hdd', style={"margin-top":"20px"}) Data retention setting specifies the number of days to keep data. Setting to 0 retains all data indefinitely.
+                                        hr
+                                    .row
+                                        .col-md-12
+                                            p(style={"margin-top":"10px", "margin-right": "10px"}) HMAIDCOL Retention (days)
+                                            input(type="number" class="form-control" id=`retentionHmaidcol_${key}` style={"margin-right": "10px"} value=(val && val.dcol && val.dcol.dataRetention ? val.dcol.dataRetention.hmaidcol : ''))
+                                .row
+                                    h5(class='hdd', style={"margin-top":"20px"}) RMF MON I Configuration
+                                    hr
+                                .row(style={"width":"96%"})
+                                    .col-md-6
+                                        p(style={"margin-top":"10px", "margin-right": "10px"}) MySQL Host
+                                        input(type="text" class="form-control" id=`rmfmon1MysqlHost_${key}` style={"margin-right": "10px"} value=(val && val.rmfmon1 && val.rmfmon1.mysql ? val.rmfmon1.mysql.host : ''))
+                                    .col-md-6
+                                        p(style={"margin-top":"10px", "margin-right": "10px"}) MySQL User
+                                        input(type="text" class="form-control" id=`rmfmon1MysqlUser_${key}` style={"margin-right": "10px"} value=(val && val.rmfmon1 && val.rmfmon1.mysql ? val.rmfmon1.mysql.user : ''))
+                                    .col-md-6
+                                        p(style={"margin-top":"10px", "margin-right": "10px"}) MySQL Password
+                                        input(type="password" class="form-control" id=`rmfmon1MysqlPassword_${key}` style={"margin-right": "10px"} value=(val && val.rmfmon1 && val.rmfmon1.mysql ? val.rmfmon1.mysql.password : ''))
+                                .row
+                                    .col-md-6
+                                        h5(class='hdd', style={"margin-top":"20px"}) Cache Configuration
+                                        hr
+                                        p(style={"margin-top":"10px", "margin-right": "10px"}) Check Interval (days)
+                                        input(type="text" class="form-control" id=`cacheCheckInterval_${key}` style={"margin-right": "10px"} value=(val && val.rmfmon1 && val.rmfmon1.cache ? val.rmfmon1.cache.checkInterval : ''))
+                                        p(style={"margin-top":"10px", "margin-right": "10px"}) Data Retention (days)
+                                        input(type="number" class="form-control" id=`retentionCache_${key}` style={"margin-right": "10px"} value=(val && val.rmfmon1 && val.rmfmon1.cache ? val.rmfmon1.cache.dataRetention : ''))
+                                        p(style={"margin-top":"10px", "margin-right": "10px"}) Start Date
+                                        input(type="date" class="form-control" id=`cacheStartDate_${key}` style={"margin-right": "10px"} value=(val && val.rmfmon1 && val.rmfmon1.cache ? val.rmfmon1.cache.startDate : ''))
+                                        .form-check
+                                            input.form-check-input(type="checkbox", id=`cacheContinuousMonitoring_${key}` checked=(val && val.rmfmon1 && val.rmfmon1.cache && val.rmfmon1.cache.continuousMonitoring))
+                                            label.form-check-label(for=`cacheContinuousMonitoring_${key}`) Continuous Monitoring
+                                    .col-md-6
+                                        h5(class='hdd', style={"margin-top":"20px"}) Device Configuration
+                                        hr
+                                        p(style={"margin-top":"10px", "margin-right": "10px"}) Check Interval (days)
+                                        input(type="text" class="form-control" id=`deviceCheckInterval_${key}` style={"margin-right": "10px"} value=(val && val.rmfmon1 && val.rmfmon1.device ? val.rmfmon1.device.checkInterval : ''))
+                                        p(style={"margin-top":"10px", "margin-right": "10px"}) Data Retention (days)
+                                        input(type="number" class="form-control" id=`retentionDevice_${key}` style={"margin-right": "10px"} value=(val && val.rmfmon1 && val.rmfmon1.device ? val.rmfmon1.device.dataRetention : ''))
+                                        p(style={"margin-top":"10px", "margin-right": "10px"}) Start Date
+                                        input(type="date" class="form-control" id=`deviceStartDate_${key}` style={"margin-right": "10px"} value=(val && val.rmfmon1 && val.rmfmon1.device ? val.rmfmon1.device.startDate : ''))
+                                        .form-check
+                                            input.form-check-input(type="checkbox", id=`deviceContinuousMonitoring_${key}` checked=(val && val.rmfmon1 && val.rmfmon1.device && val.rmfmon1.device.continuousMonitoring))
+                                            label.form-check-label(for=`deviceContinuousMonitoring_${key}`) Continuous Monitoring
+                                .row
                                     .col-md-3 
                                         a(onclick='plusSlides(-1)' class='btn btn-primary' id="rmf3b", style={"margin-top":"13px", "width":"98%", "color":"white"}) Previous
                                     .col-md-3 
@@ -312,6 +373,54 @@ block header
                                 .form-check
                                 input.form-check-input(type="checkbox", id="dcolContinuousMonitoring")
                                 label.form-check-label(for="dcolContinuousMonitoring") Continuous Monitoring
+                        .row
+                            h5(class='hdd', style={"margin-top":"20px"}) HMAI DCOLLECT Data Retention Configuration
+                            hr
+                            .row
+                                h6(class='hdd', style={"margin-top":"20px"}) Data retention setting specifies the number of days to keep data. Setting to 0 retains all data indefinitely.
+                                hr
+                            .row
+                                .col-md-12
+                                    p(style={"margin-top":"10px", "margin-right": "10px"}) HMAIDCOL Retention (days)
+                                    input(type="number" class="form-control" id="retentionHmaidcol" style={"margin-right": "10px"} value=(val && val.dcol && val.dcol.dataRetention ? val.dcol.dataRetention.hmaidcol : ''))
+                        .row
+                            h5(class='hdd', style={"margin-top":"20px"}) RMF MON I Configuration
+                            hr
+                        .row(style={"width":"96%"})
+                            .col-md-6
+                                p(style={"margin-top":"10px", "margin-right": "10px"}) MySQL Host
+                                input(type="text" class="form-control" id="rmfmon1MysqlHost" style={"margin-right": "10px"} value="")
+                            .col-md-6
+                                p(style={"margin-top":"10px", "margin-right": "10px"}) MySQL User
+                                input(type="text" class="form-control" id="rmfmon1MysqlUser" style={"margin-right": "10px"} value="")
+                            .col-md-6
+                                p(style={"margin-top":"10px", "margin-right": "10px"}) MySQL Password
+                                input(type="password" class="form-control" id="rmfmon1MysqlPassword" style={"margin-right": "10px"} value="")
+                        .row
+                            .col-md-6
+                                h5(class='hdd', style={"margin-top":"20px"}) Cache Configuration
+                                hr
+                                p(style={"margin-top":"10px", "margin-right": "10px"}) Check Interval (days)
+                                input(type="text" class="form-control" id=`cacheCheckInterval_${key}` style={"margin-right": "10px"} value=(val && val.rmfmon1 && val.rmfmon1.cache ? val.rmfmon1.cache.checkInterval : ''))
+                                p(style={"margin-top":"10px", "margin-right": "10px"}) Data Retention (days)
+                                input(type="number" class="form-control" id=`retentionCache_${key}` style={"margin-right": "10px"} value=(val && val.rmfmon1 && val.rmfmon1.cache ? val.rmfmon1.cache.dataRetention : ''))
+                                p(style={"margin-top":"10px", "margin-right": "10px"}) Start Date
+                                input(type="date" class="form-control" id=`cacheStartDate_${key}` style={"margin-right": "10px"} value=(val && val.rmfmon1 && val.rmfmon1.cache ? val.rmfmon1.cache.startDate : ''))
+                                .form-check
+                                    input.form-check-input(type="checkbox", id=`cacheContinuousMonitoring_${key}` checked=(val && val.rmfmon1 && val.rmfmon1.cache && val.rmfmon1.cache.continuousMonitoring))
+                                    label.form-check-label(for=`cacheContinuousMonitoring_${key}`) Continuous Monitoring
+                            .col-md-6
+                                h5(class='hdd', style={"margin-top":"20px"}) Device Configuration
+                                hr
+                                p(style={"margin-top":"10px", "margin-right": "10px"}) Check Interval (days)
+                                input(type="text" class="form-control" id=`deviceCheckInterval_${key}` style={"margin-right": "10px"} value=(val && val.rmfmon1 && val.rmfmon1.device ? val.rmfmon1.device.checkInterval : ''))
+                                p(style={"margin-top":"10px", "margin-right": "10px"}) Data Retention (days)
+                                input(type="number" class="form-control" id=`retentionDevice_${key}` style={"margin-right": "10px"} value=(val && val.rmfmon1 && val.rmfmon1.device ? val.rmfmon1.device.dataRetention : ''))
+                                p(style={"margin-top":"10px", "margin-right": "10px"}) Start Date
+                                input(type="date" class="form-control" id=`deviceStartDate_${key}` style={"margin-right": "10px"} value=(val && val.rmfmon1 && val.rmfmon1.device ? val.rmfmon1.device.startDate : ''))
+                                .form-check
+                                    input.form-check-input(type="checkbox", id=`deviceContinuousMonitoring_${key}` checked=(val && val.rmfmon1 && val.rmfmon1.device && val.rmfmon1.device.continuousMonitoring))
+                                    label.form-check-label(for=`deviceContinuousMonitoring_${key}`) Continuous Monitoring
                         a(href='javascript:savedds()' class='btn btn-primary' id="rmf3b", style={"margin-top":"13px", "width":"98%", "color":"white"}) Save
                     
 
