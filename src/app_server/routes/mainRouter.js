@@ -15,7 +15,7 @@ require('dotenv').config();
 const bcrypt = require('bcryptjs')
 var Auth = require('../../Auth');
 const path = require('path');
-const fs = require('fs');
+const fs = require('fs').promises;
 
 //var Zconfig;
 try{
@@ -145,96 +145,58 @@ router.get('/mtrfile', (req, res) => {
   });
 });
 
-router.post('/delmtr', (req, res) => {
-  fs.readFile('metrics.json', (err, data) => {
-    if (err) throw err;
+router.post('/delmtr', async (req, res) => {
+  try {
+    const data = await fs.readFile('metrics.json');
     let metricsfile = JSON.parse(data);
     delete metricsfile[req.body.ky]; 
-    fs.writeFile("metrics.json", JSON.stringify(metricsfile, null, '\t'), 'utf-8', function(err, data) {
-      res.send("Metric Deleted Successfully");
-    }); 
-  });
+    await fs.writeFile("metrics.json", JSON.stringify(metricsfile, null, '\t'), 'utf-8');
+    res.send("Metric Deleted Successfully");
+  } catch (err) {
+    console.error('Error deleting metric:', err);
+    res.status(500).send("Error deleting metric");
+  }
 });
 
 // Updated to allow saving multiple metrics at once
 
-router.post('/savemtr', (req, res) => {
-
-  try{
-
+router.post('/savemtr', async (req, res) => {
+  try {
     var lpar = req.body.lpar;
-
     var rpt = req.body.rpt;
-
     var nid = req.body.nid;
-
     var snvl = req.body.snvl;
-
     var vid = req.body.vid;
-
     var umi = req.body.umi;
-
     var umd = req.body.umd;
-
     var rst = req.body.rst;
-
     var key = `${lpar}_${snvl}_${umi}`;
-
     var mtr = JSON.parse(`{
-
         "lpar": "${lpar}",
-
         "request": {
-
             "report": "${rpt}",
-
             "resource": "${rst}"
-
         },
-
         "identifiers": [
-
             {
-
                 "key": "${nid}",
-
                 "value": "${snvl}"
-
             }
-
         ],
-
         "field": "${vid}",
-
         "desc": "${umd}"
-
        }`)
 
-    fs.readFile('metrics.json', (err, data) => {
-
-      if (err) throw err;
-
-      let metricsfile = JSON.parse(data);
-
-      metricsfile[`${key}`] = mtr
-
-      fs.writeFile("metrics.json", JSON.stringify(metricsfile, null, '\t'), 'utf-8', function(err, data) {
-
-        res.send("Metric Added Successfully");
-
-      }); 
-
-    });
-
-    
-
-  }catch(err){
-
-    res.send("error")
-
+    const data = await fs.readFile('metrics.json');
+    let metricsfile = JSON.parse(data);
+    metricsfile[`${key}`] = mtr;
+    await fs.writeFile("metrics.json", JSON.stringify(metricsfile, null, '\t'), 'utf-8');
+    res.send("Metric Added Successfully");
+  } catch (err) {
+    console.error('Error saving metric:', err);
+    res.status(500).send("error");
   }
-
-})
+});
 
 
 
@@ -402,10 +364,11 @@ router.get('/createZconfig', ctrlConfig.createZconfig);
 //   } 
   
 // });
-function loadZconfig() {
+async function loadZconfig() {
   const configPath = path.join(__dirname, '..', '..', 'config', 'Zconfig.json');
   try {
-    if (fs.existsSync(configPath)) {
+    const exists = await fs.access(configPath).then(() => true).catch(() => false);
+    if (exists) {
       delete require.cache[require.resolve(configPath)];
       global.Zconfig = require(configPath);
     } else {
@@ -526,17 +489,14 @@ router.get('/grafana',  function(req, res, next){
 })
 
 // render files from /upload directory
-router.get('/files', (req, res) => {
-  const directoryPath = path.join(__dirname, '../../uploads');
-  fs.readdir(directoryPath, function (err, files) {
-    //handling error
-    if (err) {
-        res.send('Unable to scan uploads directory: ' + err);
-        return;
-    } 
+router.get('/files', async (req, res) => {
+  try {
+    const directoryPath = path.join(__dirname, '../../uploads');
+    const files = await fs.readdir(directoryPath);
     res.render("files", {resfiles: files});
-  });
-   
+  } catch (err) {
+    res.send('Unable to scan uploads directory: ' + err);
+  }
 });
 
 // render the mongoDB access page
