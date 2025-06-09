@@ -61,6 +61,10 @@ if(lpar_mongo.length > 0){
             });
         
             await getdata(lpar_name, sysRealtimeURL, async function(sysinfoData){ // get Workload data in JSON format
+                if (!sysinfoData.res) {
+                    console.error(`Failed to get SYSINFO data from ${sysRealtimeURL}`);
+                    return
+                }
                 await getdata(sysinfoData["lpar"], syssumRealtimeURL, async function(syssumData) { // get SYSSUM data to combine with SYSINFO
                     await fedDatabase(syssumData["lpar"], {
                     title: "Workload Activity",

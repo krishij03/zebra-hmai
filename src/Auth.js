@@ -134,6 +134,9 @@ module.exports.formLogin  = async function (req, res, next){
                     req.session.password = data.password;
                     //res.cookie(`ZAccToken`,`${accessToken}`);
                     var redirectionUrl = req.session.redirectUrl;
+                    if (redirectionUrl == null) {
+                        redirectionUrl = "/"
+                    }
                     res.redirect(redirectionUrl);
                     //next();
                     //console.log("Adding referesh token saved succesfully from formLogin");

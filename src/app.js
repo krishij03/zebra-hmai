@@ -8,7 +8,7 @@
   Copyright Contributors to the Zowe Project.
 **/
 
-/* var createError = require('http-errors');
+/*
 
 
 
@@ -33,6 +33,8 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const morgan = require('morgan');
 const _ = require('lodash');
+
+var createError = require('http-errors');
 
 // Create empty metrics.json if it doesn't exist
 
