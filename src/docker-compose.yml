@@ -36,6 +36,21 @@ services:
     volumes:
       - grafana-data:/var/lib/grafana
       - ./config/grafana:/etc/grafana/provisioning/datasources
+  mysql:
+    image: mysql:8.0
+    container_name: zebra-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: pass
+      MYSQL_DATABASE: zebra
+      MYSQL_USER: zebra
+      MYSQL_PASSWORD: zebra
+    ports:
+      - "3306:3306"
+    command: --local-infile=1
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./my.cnf:/etc/mysql/my.cnf:ro
 
 volumes:
   mongo-data:
