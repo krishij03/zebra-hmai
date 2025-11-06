@@ -10,9 +10,9 @@ dotenv.config({ path: resolve(__dirname, '../.env') });
 
 // Set CONFIG_PATH to absolute path if not already set
 // When compiled: __dirname = packages/api/dist
-// So ../../../src/config/Zconfig.json goes up to root, then to src/config
+// So ../../../config/Zconfig.json goes up to root, then to config/
 if (!process.env.CONFIG_PATH) {
-  process.env.CONFIG_PATH = resolve(__dirname, '../../../src/config/Zconfig.json');
+  process.env.CONFIG_PATH = resolve(__dirname, '../../../config/Zconfig.json');
 } else if (!process.env.CONFIG_PATH.startsWith('/')) {
   // If relative path provided, resolve it from packages/api directory
   process.env.CONFIG_PATH = resolve(__dirname, '..', process.env.CONFIG_PATH);

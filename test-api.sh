@@ -24,7 +24,7 @@ fi
 
 # Check Zconfig
 echo "3️⃣ Checking Zconfig.json..."
-if [ -f "src/config/Zconfig.json" ]; then
+if [ -f "config/Zconfig.json" ]; then
     echo "   ✅ Zconfig.json exists"
 else
     echo "   ❌ Zconfig.json NOT found"

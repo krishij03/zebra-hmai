@@ -1,7 +1,7 @@
 /**
  * Zod schema for Zconfig.json validation
  * This schema validates the entire configuration file used by Zebra HMAI
- * Based on src/config/Zconfig.json structure
+ * Based on config/Zconfig.json structure
  */
 import { z } from 'zod';
 
