@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json.schemastore.org/swcrc",
+  "jsc": {
+    "parser": {
+      "syntax": "typescript",
+      "decorators": true,
+      "dynamicImport": true
+    },
+    "transform": {
+      "legacyDecorator": true,
+      "decoratorMetadata": true
+    },
+    "target": "es2022",
+    "keepClassNames": true,
+    "baseUrl": "./",
+    "paths": {
+      "@zebra/shared": ["../shared/src"],
+      "@zebra/shared/*": ["../shared/src/*"]
+    }
+  },
+  "module": {
+    "type": "commonjs",
+    "strict": false,
+    "strictMode": true,
+    "lazy": false,
+    "noInterop": false
+  },
+  "sourceMaps": true,
+  "minify": false
+}
+

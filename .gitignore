@@ -1,0 +1,81 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+playwright-report/
+test-results/
+
+# Production builds
+dist/
+build/
+*.tsbuildinfo
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+pnpm-debug.log*
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.local
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-*
+.DS_Store
+
+# Database
+*.db
+*.db-journal
+admin.db
+
+# Uploads
+uploads/
+
+# Misc
+.cache/
+.temp/
+tmp/
+*.pid
+*.seed
+*.pid.lock
+
+# Project documentation and phase tracking (root level only)
+/CHECKOFF-PROTOCOL.md
+/FILES-FOR-HANDOFF.md
+/FIXES-COMPLETE.md
+/FRONTEND-HANDOFF-SUMMARY.md
+/HANDOFF-PHASE3.md
+/PHASE0-INVENTORY.md
+/PHASE1-COMPLETE.md
+/PHASE2-COMPLETE.md
+/PHASE2-SUMMARY.md
+/PHASE3-COMPLETE.md
+/PHASE3-ENHANCEMENTS.md
+/PHASE3-PROGRESS.md
+/PHASE4-COMPLETE.md
+/PHASE4-FINAL-SUMMARY.md
+/PHASE4-HANDOFF.md
+/PHASE5-FRONTEND-COMPLETE.md
+/PROMETHEUS-METRICS.md
+/QUICK-START-PHASE4.md
+/QUICK-START-PHASE5.md
+/README-TYPESCRIPT.md
+/START.md
+/TESTING-RMF3-HMAI.md
+/thingstodo.md
+

@@ -1,0 +1,34 @@
+{
+  "name": "@zebra/root",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Zebra HMAI - TypeScript Monorepo for z/OS Performance Monitoring",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "start": "pnpm build:shared && DISABLE_AUTH=true concurrently -n \"API,WEB\" -c \"cyan,magenta\" \"pnpm start:api\" \"pnpm start:web\"",
+    "start:api": "DISABLE_AUTH=true pnpm --filter @zebra/api start:dev",
+    "start:web": "pnpm --filter @zebra/web dev",
+    "build:shared": "pnpm --filter @zebra/shared build",
+    "dev": "pnpm --filter \"@zebra/*\" dev",
+    "build": "pnpm --filter \"@zebra/*\" build",
+    "test": "pnpm --filter \"@zebra/*\" test",
+    "lint": "pnpm --filter \"@zebra/*\" lint",
+    "format": "pnpm --filter \"@zebra/*\" format",
+    "typecheck": "pnpm --filter \"@zebra/*\" typecheck",
+    "clean": "pnpm --filter \"@zebra/*\" clean && rm -rf node_modules",
+    "preinstall": "npx only-allow pnpm"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@changesets/cli": "^2.27.1",
+    "@playwright/test": "^1.49.1",
+    "@types/node": "^22.0.0",
+    "concurrently": "^9.2.1",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.5"
+  },
+  "packageManager": "pnpm@9.12.3"
+}

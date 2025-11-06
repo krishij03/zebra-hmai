@@ -1,0 +1,718 @@
+openapi: 3.1.0
+info:
+  title: Zebra HMAI API
+  version: 2.0.0
+  description: |
+    **Zebra HMAI (Health Monitoring and Analytics Infrastructure)** provides REST APIs 
+    for monitoring IBM z/OS mainframe performance metrics including:
+    - RMF Monitor III (real-time metrics)
+    - RMF Post Processor (historical analysis)
+    - HMAI (storage subsystem analytics)
+    - HMRE (reporting enhancements)
+    - DCOL (data collection metrics)
+    - Prometheus metrics export
+    
+    This is the v2 API with TypeScript implementation, strict validation, and OpenAPI support.
+  
+  contact:
+    name: Zebra HMAI Team
+    url: https://github.com/YOUR_ORG/zebra-hmai
+  
+  license:
+    name: EPL-2.0
+    url: https://www.eclipse.org/legal/epl-2.0/
+
+servers:
+  - url: http://localhost:3090/v2
+    description: Local development server
+  - url: https://api.example.com/v2
+    description: Production server
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Auth
+    description: Authentication and authorization endpoints
+  - name: RMF Monitor III
+    description: Real-time RMF Monitor III metrics
+  - name: RMF Post Processor
+    description: Historical RMF Post Processor data
+  - name: HMAI
+    description: Health Monitoring and Analytics Infrastructure
+  - name: HMRE
+    description: Health Monitoring Reporting Enhancements
+  - name: DCOL
+    description: Data Collection metrics
+  - name: Metrics
+    description: Prometheus metrics and configuration
+  - name: Config
+    description: Configuration management
+
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: User login
+      description: Authenticate user and return JWT tokens
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token
+      description: Get a new access token using refresh token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefreshResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/password/change:
+    post:
+      tags: [Auth]
+      summary: Change password
+      description: Change user password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordChangeRequest'
+      responses:
+        '200':
+          description: Password changed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PasswordChangeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /rmf3/{lpar}/{report}:
+    get:
+      tags: [RMF Monitor III]
+      summary: Get RMF Monitor III report
+      description: Fetch real-time RMF Monitor III metrics for a specific LPAR and report type
+      parameters:
+        - name: lpar
+          in: path
+          required: true
+          schema:
+            type: string
+          description: LPAR name
+        - name: report
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [CHANNEL, CPC, DELAY, DEV, DEVR, DSND, EADM, ENCLAVE, ENQ, HSM, JES, OPD, PROC, PROCU, STOR, STORC, STORCR, STORM, SYSINFO, USAGE, SYSSUM]
+          description: Report type
+        - name: resource
+          in: query
+          schema:
+            type: string
+          description: Resource filter (e.g., ',LPAR1,MVS_IMAGE')
+      responses:
+        '200':
+          description: RMF data retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RMFMonitor3Response'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /rmfpp/{lpar}/{report}:
+    get:
+      tags: [RMF Post Processor]
+      summary: Get RMF Post Processor report
+      description: Fetch historical RMF Post Processor data
+      parameters:
+        - name: lpar
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: report
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [CACHE, CHAN, CPU, CRYPTO, DEVICE, EADM, HFS, IOQ, OMVS, PAGESP, PAGING, SDELAY, VSTOR, XCF, CF, WLMGL]
+        - name: resource
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: RMF PP data retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RMFPostProcessorResponse'
+
+  /hmai/{lpar}/query:
+    post:
+      tags: [HMAI]
+      summary: Query HMAI metrics
+      description: Query HMAI storage subsystem metrics with filtering and pagination
+      parameters:
+        - name: lpar
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HMAIQueryRequest'
+      responses:
+        '200':
+          description: Query executed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HMAIQueryResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /hmai/{lpar}/ingestion/status:
+    get:
+      tags: [HMAI]
+      summary: Get HMAI ingestion status
+      description: Check the status of FTP ingestion for HMAI metrics
+      parameters:
+        - name: lpar
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: includeDetails
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HMAIIngestionStatusResponse'
+
+  /hmai/{lpar}/ingestion/start:
+    post:
+      tags: [HMAI]
+      summary: Start HMAI ingestion
+      description: Trigger FTP ingestion for HMAI metrics
+      parameters:
+        - name: lpar
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HMAIStartIngestionRequest'
+      responses:
+        '202':
+          description: Ingestion job queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HMAIStartIngestionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Ingestion already in progress
+
+  /metrics:
+    get:
+      tags: [Metrics]
+      summary: Get Prometheus metrics
+      description: Prometheus-compatible metrics endpoint
+      security: []
+      parameters:
+        - name: lpar
+          in: query
+          schema:
+            type: string
+        - name: metric
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Metrics in Prometheus format
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: |
+                  # HELP zebra_cpu_usage CPU usage percentage
+                  # TYPE zebra_cpu_usage gauge
+                  zebra_cpu_usage{lpar="LPAR1"} 45.2
+
+  /metrics/config:
+    get:
+      tags: [Metrics]
+      summary: Get metrics configuration
+      description: Retrieve current metrics configuration
+      responses:
+        '200':
+          description: Configuration retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricsConfig'
+    
+    put:
+      tags: [Metrics]
+      summary: Update metrics configuration
+      description: Update or add metrics definitions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMetricsConfigRequest'
+      responses:
+        '200':
+          description: Configuration updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateMetricsConfigResponse'
+
+  /config:
+    get:
+      tags: [Config]
+      summary: Get configuration
+      description: Retrieve current Zebra configuration (redacted secrets)
+      responses:
+        '200':
+          description: Configuration retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT access token obtained from /auth/login
+
+  schemas:
+    LoginRequest:
+      type: object
+      required: [name, password]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        password:
+          type: string
+          minLength: 1
+
+    LoginResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        tokenType:
+          type: string
+          enum: [Bearer]
+        expiresIn:
+          type: integer
+          example: 900
+        user:
+          type: object
+          properties:
+            name:
+              type: string
+
+    TokenRefreshRequest:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+
+    TokenRefreshResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        tokenType:
+          type: string
+          enum: [Bearer]
+        expiresIn:
+          type: integer
+
+    PasswordChangeRequest:
+      type: object
+      required: [oldPassword, newPassword, confirmPassword]
+      properties:
+        oldPassword:
+          type: string
+        newPassword:
+          type: string
+          minLength: 8
+        confirmPassword:
+          type: string
+
+    PasswordChangeResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        tokens:
+          type: object
+          properties:
+            accessToken:
+              type: string
+            refreshToken:
+              type: string
+
+    RMFMonitor3Response:
+      type: object
+      properties:
+        title:
+          type: string
+        timestart:
+          type: string
+        timeend:
+          type: string
+        columnhead:
+          type: array
+          items:
+            type: string
+        caption:
+          type: object
+          additionalProperties:
+            type: string
+        table:
+          type: array
+          items:
+            type: object
+            additionalProperties:
+              type: string
+        metadata:
+          type: object
+          properties:
+            lpar:
+              type: string
+            report:
+              type: string
+            fetchedAt:
+              type: string
+              format: date-time
+
+    RMFPostProcessorResponse:
+      type: object
+      properties:
+        title:
+          type: string
+        timestart:
+          type: string
+        timeend:
+          type: string
+        columnhead:
+          type: array
+          items:
+            type: string
+        caption:
+          type: object
+          additionalProperties:
+            type: string
+        table:
+          type: array
+          items:
+            type: object
+            additionalProperties:
+              type: string
+
+    HMAIQueryRequest:
+      type: object
+      required: [metric]
+      properties:
+        metric:
+          type: string
+          enum: [clpr, ldev, mpb, mprank20, pgrp, port]
+        timeRange:
+          type: object
+          properties:
+            start:
+              type: string
+              format: date-time
+            end:
+              type: string
+              format: date-time
+        pagination:
+          type: object
+          properties:
+            page:
+              type: integer
+              minimum: 1
+              default: 1
+            limit:
+              type: integer
+              minimum: 1
+              maximum: 1000
+              default: 100
+        sort:
+          type: object
+          properties:
+            field:
+              type: string
+            order:
+              type: string
+              enum: [asc, desc]
+        filters:
+          type: object
+          additionalProperties:
+            type: string
+
+    HMAIQueryResponse:
+      type: object
+      properties:
+        lpar:
+          type: string
+        metric:
+          type: string
+        data:
+          type: array
+          items:
+            type: object
+            additionalProperties:
+              type: string
+        pagination:
+          type: object
+          properties:
+            page:
+              type: integer
+            limit:
+              type: integer
+            total:
+              type: integer
+            totalPages:
+              type: integer
+
+    HMAIIngestionStatusResponse:
+      type: object
+      properties:
+        lpar:
+          type: string
+        status:
+          type: string
+          enum: [idle, running, error, paused]
+        lastCheck:
+          type: string
+          format: date-time
+        lastSuccessfulIngestion:
+          type: string
+          format: date-time
+        statistics:
+          type: object
+          properties:
+            totalDirectories:
+              type: integer
+            processedDirectories:
+              type: integer
+            totalFiles:
+              type: integer
+            processedFiles:
+              type: integer
+            failedFiles:
+              type: integer
+        errors:
+          type: array
+          items:
+            type: string
+
+    HMAIStartIngestionRequest:
+      type: object
+      required: [metrics, startDate]
+      properties:
+        metrics:
+          type: array
+          items:
+            type: string
+            enum: [clpr, ldev, mpb, mprank20, pgrp, port]
+          minItems: 1
+        startDate:
+          type: string
+          pattern: '^\d{4}-\d{2}-\d{2}$'
+        endDate:
+          type: string
+          pattern: '^\d{4}-\d{2}-\d{2}$'
+        force:
+          type: boolean
+          default: false
+
+    HMAIStartIngestionResponse:
+      type: object
+      properties:
+        lpar:
+          type: string
+        jobId:
+          type: string
+        status:
+          type: string
+          enum: [queued, started, error]
+        message:
+          type: string
+        estimatedDirectories:
+          type: integer
+
+    MetricsConfig:
+      type: object
+      additionalProperties:
+        type: object
+        properties:
+          name:
+            type: string
+          desc:
+            type: string
+          lpar:
+            type: string
+          request:
+            type: object
+            properties:
+              report:
+                type: string
+              resource:
+                type: string
+          field:
+            type: string
+          identifiers:
+            type: array
+            items:
+              type: object
+              properties:
+                key:
+                  type: string
+                value:
+                  type: string
+
+    UpdateMetricsConfigRequest:
+      type: object
+      required: [metrics]
+      properties:
+        metrics:
+          $ref: '#/components/schemas/MetricsConfig'
+        merge:
+          type: boolean
+          default: true
+
+    UpdateMetricsConfigResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        metricsCount:
+          type: integer
+        updated:
+          type: array
+          items:
+            type: string
+        added:
+          type: array
+          items:
+            type: string
+        errors:
+          type: array
+          items:
+            type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+        timestamp:
+          type: string
+          format: date-time
+        path:
+          type: string
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid input
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    
+    Unauthorized:
+      description: Unauthorized - invalid or missing credentials
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    
+    ServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+

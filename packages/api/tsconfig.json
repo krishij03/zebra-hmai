@@ -1,0 +1,33 @@
+{
+    "extends": "../../tsconfig.json",
+    "compilerOptions": {
+      "module": "commonjs",
+      "declaration": true,
+      "removeComments": true,
+      "emitDecoratorMetadata": true,
+      "experimentalDecorators": true,
+      "allowSyntheticDefaultImports": true,
+      "target": "ES2022",
+      "sourceMap": true,
+      "outDir": "./dist",
+      "baseUrl": "./",
+      "incremental": true,
+      "skipLibCheck": true,
+      "strictNullChecks": true,
+      "noImplicitAny": true,
+      "strictBindCallApply": true,
+      "forceConsistentCasingInFileNames": true,
+      "noFallthroughCasesInSwitch": true,
+      "paths": {
+        "@zebra/shared": ["../shared/dist"],
+        "@zebra/shared/config": ["../shared/dist/config"],
+        "@zebra/shared/types": ["../shared/dist/types"],
+        "@zebra/shared/schemas": ["../shared/dist/schemas"],
+        "@zebra/shared/dtos": ["../shared/dist/dtos"],
+        "@zebra/shared/constants": ["../shared/dist"],
+        "@zebra/shared/*": ["../shared/dist/*"]
+      }
+    },
+    "include": ["src"],
+    "exclude": ["node_modules", "dist", "test", "**/*.spec.ts", "**/*.test.ts"]
+  }
