@@ -12,8 +12,8 @@ export default function RMF3Page() {
   const [selectedLpar, setSelectedLpar] = useState('');
   const [selectedReportType, setSelectedReportType] = useState('');
 
-  const { data: lpars, isLoading: lparsLoading } = useRMF3LPARs();
-  const { data: reportTypes, isLoading: reportTypesLoading } = useRMF3ReportTypes();
+  const { data: lpars, isLoading: lparsLoading, error: lparsError } = useRMF3LPARs();
+  const { data: reportTypes, isLoading: reportTypesLoading, error: reportTypesError } = useRMF3ReportTypes();
   const {
     data: report,
     isLoading: reportLoading,
@@ -52,6 +52,13 @@ export default function RMF3Page() {
             </label>
             {lparsLoading ? (
               <p className="text-sm text-gray-500">Loading LPARs...</p>
+            ) : lparsError ? (
+              <div className="rounded-md bg-red-50 p-3">
+                <p className="text-sm text-red-700 font-semibold">API Connection Error</p>
+                <p className="text-xs text-red-600 mt-1">
+                  Cannot connect to API. Please check that the backend is running on port 3090.
+                </p>
+              </div>
             ) : lpars && lpars.length > 0 ? (
               <select
                 id="lpar"
@@ -83,6 +90,13 @@ export default function RMF3Page() {
             </label>
             {reportTypesLoading ? (
               <p className="text-sm text-gray-500">Loading report types...</p>
+            ) : reportTypesError ? (
+              <div className="rounded-md bg-red-50 p-3">
+                <p className="text-sm text-red-700 font-semibold">API Connection Error</p>
+                <p className="text-xs text-red-600 mt-1">
+                  Cannot load report types from API.
+                </p>
+              </div>
             ) : reportTypes && reportTypes.length > 0 ? (
               <select
                 id="reportType"

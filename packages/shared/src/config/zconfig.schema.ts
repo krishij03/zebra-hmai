@@ -44,49 +44,51 @@ const hmaiConfigSchema = z.object({
  * HMRE (Health Monitoring and Reporting Enhancements) configuration
  */
 const hmreConfigSchema = z.object({
-  ftp: ftpConfigSchema,
-  mysql: mysqlConfigSchema,
+  ftp: ftpConfigSchema.optional(),
+  mysql: mysqlConfigSchema.optional(),
   dataRetention: dataRetentionSchema.optional(),
-  checkInterval: z.coerce.number().int().positive().default(2),
-  defaultStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
+  checkInterval: z.coerce.number().int().positive().optional(),
+  defaultStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD').optional(),
   continuousMonitoring: z.boolean().default(false),
-});
+}).passthrough();
 
 /**
  * DCOL (Data Collection) configuration
  */
 const dcolConfigSchema = z.object({
-  ftp: ftpConfigSchema,
-  mysql: mysqlConfigSchema,
+  ftp: ftpConfigSchema.optional(),
+  mysql: mysqlConfigSchema.optional(),
   dataRetention: dataRetentionSchema.optional(),
-  checkInterval: z.coerce.number().int().positive().default(2),
-  defaultStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
+  checkInterval: z.coerce.number().int().positive().optional(),
+  defaultStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD').optional(),
   continuousMonitoring: z.boolean().default(false),
-});
+}).passthrough();
 
 /**
  * RMF Monitor I configuration (cache, device)
  */
 const rmfMon1ConfigSchema = z.object({
-  mysql: mysqlConfigSchema,
+  mysql: mysqlConfigSchema.optional(),
   cache: z
     .object({
-      checkInterval: z.coerce.number().int().positive().default(2),
-      dataRetention: z.coerce.number().int().nonnegative().default(5),
-      startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
+      checkInterval: z.coerce.number().int().positive().optional(),
+      dataRetention: z.coerce.number().int().nonnegative().optional(),
+      startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD').optional(),
       continuousMonitoring: z.boolean().default(false),
     })
+    .passthrough()
     .optional(),
   device: z
     .object({
-      checkInterval: z.coerce.number().int().positive().default(2),
-      dataRetention: z.coerce.number().int().nonnegative().default(5),
-      startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
+      checkInterval: z.coerce.number().int().positive().optional(),
+      dataRetention: z.coerce.number().int().nonnegative().optional(),
+      startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD').optional(),
       continuousMonitoring: z.boolean().default(false),
     })
+    .passthrough()
     .optional(),
   continuousMonitoring: z.boolean().default(false),
-});
+}).passthrough();
 
 /**
  * DDS (Data Delivery Service) LPAR configuration

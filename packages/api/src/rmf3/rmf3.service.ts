@@ -93,7 +93,7 @@ export class RMF3Service {
     try {
       this.logger.log(`Fetching RMF3 report: ${report} for LPAR: ${lpar}`, 'RMF3Service');
 
-      // Make HTTP request
+      // Make HTTP request with TLS v1.0 support for legacy mainframes
       const response = await firstValueFrom(
         this.http.get(fullUrl, {
           auth:
@@ -106,6 +106,11 @@ export class RMF3Service {
           headers: {
             Accept: 'application/xml, text/xml',
           },
+          httpsAgent: new (require('https').Agent)({
+            minVersion: 'TLSv1',
+            maxVersion: 'TLSv1.2',
+            rejectUnauthorized: false, // Allow self-signed certs for mainframe
+          }),
         }),
       );
 
