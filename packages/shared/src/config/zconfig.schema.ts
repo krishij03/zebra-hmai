@@ -13,6 +13,13 @@ const ftpConfigSchema = z.object({
 });
 
 /**
+ * Lenient FTP config for optional modules (HMRE, DCOL, RMFMon1)
+ */
+const ftpConfigSchemaLenient = z.object({
+  directory: z.string().optional(),
+}).passthrough();
+
+/**
  * MySQL/MariaDB connection configuration
  */
 const mysqlConfigSchema = z.object({
@@ -22,6 +29,17 @@ const mysqlConfigSchema = z.object({
   database: z.string().optional(),
   port: z.number().int().positive().default(3306),
 });
+
+/**
+ * Lenient MySQL config for optional modules (HMRE, DCOL, RMFMon1)
+ */
+const mysqlConfigSchemaLenient = z.object({
+  host: z.string().optional(),
+  user: z.string().optional(),
+  password: z.string().optional(),
+  database: z.string().optional(),
+  port: z.number().int().positive().optional(),
+}).passthrough();
 
 /**
  * Data retention configuration (in days)
@@ -42,39 +60,42 @@ const hmaiConfigSchema = z.object({
 
 /**
  * HMRE (Health Monitoring and Reporting Enhancements) configuration
+ * Uses lenient validation for optional module
  */
 const hmreConfigSchema = z.object({
-  ftp: ftpConfigSchema.optional(),
-  mysql: mysqlConfigSchema.optional(),
+  ftp: ftpConfigSchemaLenient.optional(),
+  mysql: mysqlConfigSchemaLenient.optional(),
   dataRetention: dataRetentionSchema.optional(),
   checkInterval: z.coerce.number().int().positive().optional(),
-  defaultStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD').optional(),
-  continuousMonitoring: z.boolean().default(false),
+  defaultStartDate: z.string().optional(), // Allow any string or empty
+  continuousMonitoring: z.boolean().optional(),
 }).passthrough();
 
 /**
  * DCOL (Data Collection) configuration
+ * Uses lenient validation for optional module
  */
 const dcolConfigSchema = z.object({
-  ftp: ftpConfigSchema.optional(),
-  mysql: mysqlConfigSchema.optional(),
+  ftp: ftpConfigSchemaLenient.optional(),
+  mysql: mysqlConfigSchemaLenient.optional(),
   dataRetention: dataRetentionSchema.optional(),
   checkInterval: z.coerce.number().int().positive().optional(),
-  defaultStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD').optional(),
-  continuousMonitoring: z.boolean().default(false),
+  defaultStartDate: z.string().optional(), // Allow any string or empty
+  continuousMonitoring: z.boolean().optional(),
 }).passthrough();
 
 /**
  * RMF Monitor I configuration (cache, device)
+ * Uses lenient validation for optional module
  */
 const rmfMon1ConfigSchema = z.object({
-  mysql: mysqlConfigSchema.optional(),
+  mysql: mysqlConfigSchemaLenient.optional(),
   cache: z
     .object({
       checkInterval: z.coerce.number().int().positive().optional(),
       dataRetention: z.coerce.number().int().nonnegative().optional(),
-      startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD').optional(),
-      continuousMonitoring: z.boolean().default(false),
+      startDate: z.string().optional(), // Allow any string or empty
+      continuousMonitoring: z.boolean().optional(),
     })
     .passthrough()
     .optional(),
@@ -82,12 +103,12 @@ const rmfMon1ConfigSchema = z.object({
     .object({
       checkInterval: z.coerce.number().int().positive().optional(),
       dataRetention: z.coerce.number().int().nonnegative().optional(),
-      startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD').optional(),
-      continuousMonitoring: z.boolean().default(false),
+      startDate: z.string().optional(), // Allow any string or empty
+      continuousMonitoring: z.boolean().optional(),
     })
     .passthrough()
     .optional(),
-  continuousMonitoring: z.boolean().default(false),
+  continuousMonitoring: z.boolean().optional(),
 }).passthrough();
 
 /**
