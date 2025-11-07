@@ -66,7 +66,7 @@ const hmreConfigSchema = z.object({
   ftp: ftpConfigSchemaLenient.optional(),
   mysql: mysqlConfigSchemaLenient.optional(),
   dataRetention: dataRetentionSchema.optional(),
-  checkInterval: z.coerce.number().int().positive().optional(),
+  checkInterval: z.union([z.coerce.number().int().positive(), z.literal('')]).optional(),
   defaultStartDate: z.string().optional(), // Allow any string or empty
   continuousMonitoring: z.boolean().optional(),
 }).passthrough();
@@ -79,7 +79,7 @@ const dcolConfigSchema = z.object({
   ftp: ftpConfigSchemaLenient.optional(),
   mysql: mysqlConfigSchemaLenient.optional(),
   dataRetention: dataRetentionSchema.optional(),
-  checkInterval: z.coerce.number().int().positive().optional(),
+  checkInterval: z.union([z.coerce.number().int().positive(), z.literal('')]).optional(),
   defaultStartDate: z.string().optional(), // Allow any string or empty
   continuousMonitoring: z.boolean().optional(),
 }).passthrough();
@@ -92,8 +92,8 @@ const rmfMon1ConfigSchema = z.object({
   mysql: mysqlConfigSchemaLenient.optional(),
   cache: z
     .object({
-      checkInterval: z.coerce.number().int().positive().optional(),
-      dataRetention: z.coerce.number().int().nonnegative().optional(),
+      checkInterval: z.union([z.coerce.number().int().positive(), z.literal('')]).optional(),
+      dataRetention: z.union([z.coerce.number().int().nonnegative(), z.literal('')]).optional(),
       startDate: z.string().optional(), // Allow any string or empty
       continuousMonitoring: z.boolean().optional(),
     })
@@ -101,8 +101,8 @@ const rmfMon1ConfigSchema = z.object({
     .optional(),
   device: z
     .object({
-      checkInterval: z.coerce.number().int().positive().optional(),
-      dataRetention: z.coerce.number().int().nonnegative().optional(),
+      checkInterval: z.union([z.coerce.number().int().positive(), z.literal('')]).optional(),
+      dataRetention: z.union([z.coerce.number().int().nonnegative(), z.literal('')]).optional(),
       startDate: z.string().optional(), // Allow any string or empty
       continuousMonitoring: z.boolean().optional(),
     })
