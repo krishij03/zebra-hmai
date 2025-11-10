@@ -31,3 +31,4 @@ import { BullModule } from '@nestjs/bullmq';
 })
 export class QueueModule {}
 
+

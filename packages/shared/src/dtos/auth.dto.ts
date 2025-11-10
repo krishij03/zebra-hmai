@@ -108,3 +108,4 @@ export const userInfoResponseSchema = z.object({
 
 export type UserInfoResponseDTO = z.infer<typeof userInfoResponseSchema>;
 
+

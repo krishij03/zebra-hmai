@@ -79,3 +79,8 @@ tmp/
 /TESTING-RMF3-HMAI.md
 /thingstodo.md
 /ZCONFIG-MIGRATION.md
+/EMPTY-STRING-FIX.md
+/RHEL-DEPLOYMENT.md
+/REDIS-FIX-SUMMARY.md
+/start-rhel.sh
+zebra-*.log

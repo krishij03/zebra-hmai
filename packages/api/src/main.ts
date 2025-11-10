@@ -193,6 +193,13 @@ async function bootstrap() {
   // Log environment
   logger.log(`Environment: ${process.env.NODE_ENV || 'development'}`, 'Bootstrap');
   logger.log(`Log Level: ${pinoHttp.level}`, 'Bootstrap');
+  
+  // Log Redis status
+  if (process.env.DISABLE_REDIS === 'true') {
+    logger.warn('⚠️  Redis/BullMQ DISABLED - HMAI ingestion features will not be available', 'Bootstrap');
+  } else {
+    logger.log(`✓ Redis enabled on ${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || '6379'}`, 'Bootstrap');
+  }
 }
 
 // Start application

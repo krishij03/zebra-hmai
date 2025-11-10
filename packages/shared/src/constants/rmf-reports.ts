@@ -111,3 +111,4 @@ export const REPORT_TYPE_MAP: Record<string, 'MVS_IMAGE' | 'SYSPLEX'> = {
   ZFSOVW: 'SYSPLEX',
 } as const;
 
+

@@ -8,8 +8,8 @@
     "pnpm": ">=9.0.0"
   },
   "scripts": {
-    "start": "pnpm build:shared && DISABLE_AUTH=true concurrently -n \"API,WEB\" -c \"cyan,magenta\" \"pnpm start:api\" \"pnpm start:web\"",
-    "start:api": "DISABLE_AUTH=true pnpm --filter @zebra/api start:dev",
+    "start": "pnpm build:shared && DISABLE_AUTH=true DISABLE_REDIS=true concurrently -n \"API,WEB\" -c \"cyan,magenta\" \"pnpm start:api\" \"pnpm start:web\"",
+    "start:api": "DISABLE_AUTH=true DISABLE_REDIS=true pnpm --filter @zebra/api start:dev",
     "start:web": "pnpm --filter @zebra/web dev",
     "build:shared": "pnpm --filter @zebra/shared build",
     "dev": "pnpm --filter \"@zebra/*\" dev",
