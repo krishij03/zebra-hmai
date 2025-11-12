@@ -85,10 +85,10 @@ export default function HMAIPage() {
                 <p className="text-sm text-gray-500">Loading LPARs...</p>
               ) : lpars && lpars.length > 0 ? (
                 <select
-                  id="lpar"
-                  value={selectedLpar}
-                  onChange={(e) => setSelectedLpar(e.target.value)}
-                  className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md p-2 border"
+                id="lpar"
+                value={selectedLpar}
+                onChange={(e) => setSelectedLpar(e.target.value)}
+                className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md p-2 border"
                 >
                   {lpars.map((lpar) => (
                     <option key={lpar} value={lpar}>

@@ -326,6 +326,11 @@ export class MetricsService implements OnModuleInit, OnModuleDestroy {
                   password: lparConfig.ddspwd || '',
                 }
               : undefined,
+          httpsAgent: new (require('https').Agent)({
+            minVersion: 'TLSv1',
+            maxVersion: 'TLSv1.2',
+            rejectUnauthorized: false, // Allow self-signed certs for mainframe
+          }),
         }),
       );
 
