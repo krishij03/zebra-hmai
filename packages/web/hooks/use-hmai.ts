@@ -6,14 +6,26 @@ import { useMutation, useQuery, useQueryClient, type UseQueryOptions } from '@ta
 import { apiClient } from '@/lib/api-client';
 
 export interface HMAIIngestionJob {
-  id: string;
+  id?: string;
   lpar: string;
-  metrics: string[];
-  status: 'waiting' | 'active' | 'completed' | 'failed';
-  progress: number;
+  metrics?: string[];
+  status: 'idle' | 'running' | 'error' | 'paused' | 'waiting' | 'active' | 'completed' | 'failed';
+  progress?: number;
   startTime?: string;
   endTime?: string;
   error?: string;
+  statistics?: {
+    totalDirectories: number;
+    processedDirectories: number;
+    totalFiles: number;
+    processedFiles: number;
+    failedFiles: number;
+  };
+  lastCheck?: string;
+  lastSuccessfulIngestion?: string;
+  errors?: string[];
+  currentDirectory?: string;
+  estimatedCompletion?: string;
 }
 
 export interface HMAIIngestionRequest {
@@ -168,6 +180,34 @@ export function useRunningHMAIProcesses() {
       return response.data;
     },
     refetchInterval: 10000, // Poll every 10 seconds
+  });
+}
+
+/**
+ * Check what data has already been processed for an LPAR
+ */
+export function useCheckProcessedData(
+  lpar: string,
+  startDate: string,
+  endDate: string,
+  metrics: string[]
+) {
+  return useQuery({
+    queryKey: ['hmai', lpar, 'check-processed', startDate, endDate, metrics],
+    queryFn: async () => {
+      const response = await apiClient.post<{
+        alreadyProcessed: boolean;
+        processedDirs: string[];
+        processedMetrics: Record<string, string[]>;
+        warning: string;
+      }>(`/hmai/${lpar}/check-processed`, {
+        startDate,
+        endDate,
+        metrics,
+      });
+      return response.data;
+    },
+    enabled: false, // Only run when explicitly called
   });
 }
 

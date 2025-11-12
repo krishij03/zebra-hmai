@@ -320,6 +320,89 @@ export class HMAIIngestionService {
   }
 
   /**
+   * Check if requested data has already been processed
+   */
+  async checkProcessedData(
+    lpar: string,
+    startDate: string,
+    endDate?: string,
+    metrics?: string[],
+  ): Promise<{
+    alreadyProcessed: boolean;
+    processedDirs: string[];
+    processedMetrics: Record<string, string[]>;
+    warning: string;
+  }> {
+    // Get LPAR config
+    const lparConfig = this.config.getLparConfig(lpar);
+    if (!lparConfig) {
+      throw new BadRequestException(`LPAR ${lpar} not found in configuration`);
+    }
+
+    const hmaiConfig = lparConfig.hmai;
+    if (!hmaiConfig) {
+      throw new BadRequestException(`LPAR ${lpar} is not configured for HMAI`);
+    }
+
+    // Read memory file
+    const { MemoryService } = await import('../common/memory.service');
+    const memoryService = new MemoryService(this.logger);
+    const memory = await memoryService.readLparData('hmai', lpar);
+
+    // Generate directory names for date range
+    const dirsToCheck: string[] = [];
+    if (startDate) {
+      const start = new Date(startDate);
+      const end = endDate ? new Date(endDate) : start;
+      
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        dirsToCheck.push(`${year}${month}${day}`);
+      }
+    }
+
+    // Check which directories have been processed
+    const processedDirs = dirsToCheck.filter((dir) => 
+      memory.processedDirectories?.includes(dir)
+    );
+
+    // Check which metrics have been processed for these dates
+    const processedMetrics: Record<string, string[]> = {};
+    const requestedMetrics = metrics || HMAI_METRICS;
+
+    for (const dir of processedDirs) {
+      const dirProcessedMetrics = memory.processedMetrics?.[dir] || [];
+      const matchingMetrics = requestedMetrics.filter((m) =>
+        dirProcessedMetrics.includes(m)
+      );
+      if (matchingMetrics.length > 0) {
+        processedMetrics[dir] = matchingMetrics;
+      }
+    }
+
+    const alreadyProcessed = processedDirs.length > 0;
+    
+    let warning = '';
+    if (alreadyProcessed) {
+      const allMetrics = Object.values(processedMetrics).flat();
+      const uniqueMetrics = [...new Set(allMetrics)];
+      warning = `Warning: Some or all of this data has already been processed.\n` +
+        `Processed dates: ${processedDirs.join(', ')}\n` +
+        `Processed metrics: ${uniqueMetrics.join(', ')}\n\n` +
+        `If you continue, you may create duplicate records in the database.`;
+    }
+
+    return {
+      alreadyProcessed,
+      processedDirs,
+      processedMetrics,
+      warning,
+    };
+  }
+
+  /**
    * Check if LPAR is properly configured for HMAI
    */
   private isLparConfiguredForHMAI(lparConfig: any): boolean {

@@ -224,4 +224,35 @@ export class HMAIController {
   async getRunningProcesses() {
     return this.ingestionService.getRunningProcesses();
   }
+
+  @Post(':lpar/check-processed')
+  @ApiOperation({
+    summary: 'Check what data has already been processed',
+    description: 'Check memory file to see if requested data range has already been ingested',
+  })
+  @ApiParam({
+    name: 'lpar',
+    description: 'LPAR name',
+    example: 'LPAR1',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        startDate: { type: 'string', example: '2024-01-01' },
+        endDate: { type: 'string', example: '2024-01-31' },
+        metrics: { type: 'array', items: { type: 'string' }, example: ['clpr', 'ldev'] },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Processed data check completed',
+  })
+  async checkProcessedData(
+    @Param('lpar') lpar: string,
+    @Body() body: { startDate: string; endDate?: string; metrics: string[] },
+  ) {
+    return this.ingestionService.checkProcessedData(lpar, body.startDate, body.endDate, body.metrics);
+  }
 }

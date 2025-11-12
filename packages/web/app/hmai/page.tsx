@@ -13,6 +13,7 @@ import {
   useStartAllHMAI,
   useRunningHMAIProcesses,
   useHMAIData,
+  useCheckProcessedData,
   type HMAIIngestionRequest,
 } from '@/hooks/use-hmai';
 import { useRMF3LPARs } from '@/hooks/use-rmf3';
@@ -26,10 +27,24 @@ export default function HMAIPage() {
     endDate: new Date().toISOString().split('T')[0],
   });
   const [viewDataMetric, setViewDataMetric] = useState<string | null>(null);
+  
+  // UI state
+  const [showLoadingModal, setShowLoadingModal] = useState(false);
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
+  const [duplicateWarningData, setDuplicateWarningData] = useState<{
+    warning: string;
+    processedDirs: string[];
+    processedMetrics: Record<string, string[]>;
+  } | null>(null);
+  const [toastMessage, setToastMessage] = useState<{
+    type: 'success' | 'error' | 'info';
+    message: string;
+  } | null>(null);
 
   const { data: lpars, isLoading: lparsLoading } = useRMF3LPARs();
   const { data: status, isLoading } = useHMAIIngestionStatus(selectedLpar, {
     enabled: !!selectedLpar,
+    refetchInterval: showLoadingModal ? 3000 : 10000, // Poll faster when modal is showing
   });
   const { data: runningProcesses } = useRunningHMAIProcesses();
   const { data: hmaiData, refetch: refetchData } = useHMAIData(
@@ -42,6 +57,12 @@ export default function HMAIPage() {
   const stopMutation = useStopHMAIIngestion(selectedLpar);
   const clearMutation = useClearHMAIDatabase(selectedLpar);
   const startAllMutation = useStartAllHMAI();
+  const checkProcessedQuery = useCheckProcessedData(
+    selectedLpar,
+    dateRange.startDate,
+    continuousMonitoring ? '' : dateRange.endDate,
+    selectedMetrics
+  );
 
   // Auto-select first LPAR when loaded
   useEffect(() => {
@@ -50,22 +71,79 @@ export default function HMAIPage() {
     }
   }, [lpars, selectedLpar]);
 
+  // Monitor job status for completion/failure notifications
+  useEffect(() => {
+    if (status && showLoadingModal) {
+      if (status.status === 'completed') {
+        setShowLoadingModal(false);
+        showToast('success', `HMAI ingestion completed successfully for ${selectedLpar}!`);
+      } else if (status.status === 'failed') {
+        setShowLoadingModal(false);
+        showToast('error', `HMAI ingestion failed: ${status.error || 'Unknown error'}`);
+      }
+    }
+  }, [status, showLoadingModal, selectedLpar]);
+
+  // Auto-hide toast after 5 seconds
+  useEffect(() => {
+    if (toastMessage) {
+      const timer = setTimeout(() => {
+        setToastMessage(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [toastMessage]);
+
   const availableMetrics = ['clpr', 'ldev', 'mpb', 'mprank20', 'pgrp', 'port'];
 
-  const handleStart = () => {
+  const showToast = (type: 'success' | 'error' | 'info', message: string) => {
+    setToastMessage({ type, message });
+  };
+
+  const handleStart = async () => {
+    // First, check if data has already been processed
+    try {
+      const checkResult = await checkProcessedQuery.refetch();
+      
+      if (checkResult.data?.alreadyProcessed) {
+        // Show warning modal
+        setDuplicateWarningData({
+          warning: checkResult.data.warning,
+          processedDirs: checkResult.data.processedDirs,
+          processedMetrics: checkResult.data.processedMetrics,
+        });
+        setShowDuplicateWarning(true);
+        return;
+      }
+      
+      // No duplicates, proceed with ingestion
+      startIngestion();
+    } catch (error) {
+      // If check fails, proceed anyway
+      startIngestion();
+    }
+  };
+
+  const startIngestion = () => {
     const request: HMAIIngestionRequest = {
       metrics: selectedMetrics,
       startDate: dateRange.startDate,
       endDate: continuousMonitoring ? '' : dateRange.endDate,
       continuousMonitoring,
     };
+    
     startMutation.mutate(request, {
       onSuccess: () => {
-        alert(
+        setShowLoadingModal(true);
+        showToast(
+          'info',
           continuousMonitoring
             ? `HMAI process started for ${selectedLpar} with continuous monitoring`
             : `HMAI process started for ${selectedLpar}`
         );
+      },
+      onError: (error: any) => {
+        showToast('error', `Failed to start HMAI: ${error.message}`);
       },
     });
   };
@@ -73,7 +151,11 @@ export default function HMAIPage() {
   const handleStop = () => {
     stopMutation.mutate(undefined, {
       onSuccess: () => {
-        alert(`HMAI process stopped for ${selectedLpar}`);
+        setShowLoadingModal(false);
+        showToast('info', `HMAI process stopped for ${selectedLpar}`);
+      },
+      onError: (error: any) => {
+        showToast('error', `Failed to stop HMAI: ${error.message}`);
       },
     });
   };
@@ -86,7 +168,10 @@ export default function HMAIPage() {
     ) {
       clearMutation.mutate(undefined, {
         onSuccess: () => {
-          alert(`Database and memory cleared for ${selectedLpar}`);
+          showToast('success', `Database and memory cleared for ${selectedLpar}`);
+        },
+        onError: (error: any) => {
+          showToast('error', `Failed to clear database: ${error.message}`);
         },
       });
     }
@@ -107,7 +192,10 @@ export default function HMAIPage() {
           if (data.alreadyRunningLpars.length > 0) {
             message += `\n\nAlready running: ${data.alreadyRunningLpars.join(', ')}`;
           }
-          alert(message);
+          showToast('success', message);
+        },
+        onError: (error: any) => {
+          showToast('error', `Failed to start all LPARs: ${error.message}`);
         },
       });
     }
@@ -139,6 +227,336 @@ export default function HMAIPage() {
         </div>
       </div>
 
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div
+          className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
+            toastMessage.type === 'success'
+              ? 'bg-green-500'
+              : toastMessage.type === 'error'
+                ? 'bg-red-500'
+                : 'bg-blue-500'
+          } text-white max-w-md`}
+        >
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              {toastMessage.type === 'success' && (
+                <svg
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              )}
+              {toastMessage.type === 'error' && (
+                <svg
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              )}
+              {toastMessage.type === 'info' && (
+                <svg
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              )}
+            </div>
+            <div className="ml-3 flex-1">
+              <p className="text-sm font-medium whitespace-pre-line">
+                {toastMessage.message}
+              </p>
+            </div>
+            <button
+              onClick={() => setToastMessage(null)}
+              className="ml-4 inline-flex text-white hover:text-gray-200"
+            >
+              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path
+                  fillRule="evenodd"
+                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Loading Modal */}
+      {showLoadingModal && status && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div
+              className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+              onClick={() => setShowLoadingModal(false)}
+            />
+
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen">
+              &#8203;
+            </span>
+
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="sm:flex sm:items-start">
+                  <div className="mt-3 text-center sm:mt-0 sm:text-left w-full">
+                    <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
+                      HMAI Ingestion in Progress
+                    </h3>
+
+                    <div className="space-y-4">
+                      {/* Status */}
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">
+                          Status
+                        </p>
+                        <p className="mt-1">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              status.status === 'active'
+                                ? 'bg-green-100 text-green-800 animate-pulse'
+                                : status.status === 'completed'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : status.status === 'failed'
+                                    ? 'bg-red-100 text-red-800'
+                                    : 'bg-gray-100 text-gray-800'
+                            }`}
+                          >
+                            {status.status.toUpperCase()}
+                          </span>
+                        </p>
+                      </div>
+
+                      {/* Progress Bar */}
+                      {status.progress !== undefined && (
+                        <div>
+                          <div className="flex justify-between mb-1">
+                            <span className="text-sm font-medium text-gray-700">
+                              Progress
+                            </span>
+                            <span className="text-sm font-medium text-gray-700">
+                              {Math.round(status.progress)}%
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-4">
+                            <div
+                              className="bg-blue-600 h-4 rounded-full transition-all duration-500 ease-in-out"
+                              style={{ width: `${status.progress}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Statistics */}
+                      {status.statistics && (
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <p className="text-gray-500">Files Processed</p>
+                            <p className="font-medium">
+                              {status.statistics.processedFiles} /{' '}
+                              {status.statistics.totalFiles}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500">Directories</p>
+                            <p className="font-medium">
+                              {status.statistics.processedDirectories} /{' '}
+                              {status.statistics.totalDirectories}
+                            </p>
+                          </div>
+                          {status.statistics.failedFiles > 0 && (
+                            <div className="col-span-2">
+                              <p className="text-gray-500">Failed Files</p>
+                              <p className="font-medium text-red-600">
+                                {status.statistics.failedFiles}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Metrics */}
+                      {status.metrics && status.metrics.length > 0 && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-500 mb-1">
+                            Metrics
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {status.metrics.map((metric) => (
+                              <span
+                                key={metric}
+                                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
+                              >
+                                {metric}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Error */}
+                      {status.error && (
+                        <div className="rounded-md bg-red-50 p-4">
+                          <div className="flex">
+                            <div className="flex-shrink-0">
+                              <svg
+                                className="h-5 w-5 text-red-400"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                            </div>
+                            <div className="ml-3">
+                              <h3 className="text-sm font-medium text-red-800">
+                                Error
+                              </h3>
+                              <div className="mt-2 text-sm text-red-700">
+                                <p>{status.error}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
+                  onClick={handleStop}
+                  disabled={stopMutation.isPending}
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
+                >
+                  {stopMutation.isPending ? 'Stopping...' : 'Stop Ingestion'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowLoadingModal(false)}
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                >
+                  Hide
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Duplicate Data Warning Modal */}
+      {showDuplicateWarning && duplicateWarningData && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div
+              className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+              onClick={() => setShowDuplicateWarning(false)}
+            />
+
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen">
+              &#8203;
+            </span>
+
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="sm:flex sm:items-start">
+                  <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 sm:mx-0 sm:h-10 sm:w-10">
+                    <svg
+                      className="h-6 w-6 text-yellow-600"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                      />
+                    </svg>
+                  </div>
+                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                    <h3 className="text-lg leading-6 font-medium text-gray-900">
+                      Duplicate Data Detected
+                    </h3>
+                    <div className="mt-2">
+                      <p className="text-sm text-gray-500 whitespace-pre-line">
+                        {duplicateWarningData.warning}
+                      </p>
+                      
+                      {Object.keys(duplicateWarningData.processedMetrics).length > 0 && (
+                        <div className="mt-4">
+                          <p className="text-sm font-medium text-gray-700 mb-2">
+                            Details:
+                          </p>
+                          <div className="max-h-40 overflow-y-auto text-xs">
+                            {Object.entries(duplicateWarningData.processedMetrics).map(
+                              ([dir, metrics]) => (
+                                <div key={dir} className="mb-2">
+                                  <span className="font-medium">{dir}:</span>{' '}
+                                  {metrics.join(', ')}
+                                </div>
+                              )
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDuplicateWarning(false);
+                    startIngestion();
+                  }}
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-yellow-600 text-base font-medium text-white hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 sm:ml-3 sm:w-auto sm:text-sm"
+                >
+                  Continue Anyway
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowDuplicateWarning(false)}
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:w-auto sm:text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Configuration Panel */}
         <div className="lg:col-span-1">
@@ -159,10 +577,10 @@ export default function HMAIPage() {
                 <p className="text-sm text-gray-500">Loading LPARs...</p>
               ) : lpars && lpars.length > 0 ? (
                 <select
-                id="lpar"
-                value={selectedLpar}
-                onChange={(e) => setSelectedLpar(e.target.value)}
-                className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md p-2 border"
+                  id="lpar"
+                  value={selectedLpar}
+                  onChange={(e) => setSelectedLpar(e.target.value)}
+                  className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md p-2 border"
                 >
                   {lpars.map((lpar) => (
                     <option key={lpar} value={lpar}>
@@ -173,7 +591,8 @@ export default function HMAIPage() {
               ) : (
                 <div className="rounded-md bg-yellow-50 p-3">
                   <p className="text-sm text-yellow-700">
-                    No LPARs configured. Please add LPAR configuration in Zconfig.json.
+                    No LPARs configured. Please add LPAR configuration in
+                    Zconfig.json.
                   </p>
                 </div>
               )}
@@ -192,7 +611,7 @@ export default function HMAIPage() {
                 }
                 className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md p-2 border mb-2"
               />
-              
+
               {/* Continuous Monitoring Checkbox */}
               <label className="flex items-center mb-2">
                 <input
@@ -228,7 +647,7 @@ export default function HMAIPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Metrics
               </label>
-              
+
               {/* Select All */}
               <label className="flex items-center mb-2 pb-2 border-b">
                 <input
@@ -482,7 +901,7 @@ export default function HMAIPage() {
           <h3 className="text-lg font-medium text-gray-900 mb-4">
             View HMAI Data
           </h3>
-          
+
           <div className="flex gap-4 mb-4">
             <div className="flex-1">
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -518,11 +937,12 @@ export default function HMAIPage() {
                 Showing data for {selectedLpar} - {viewDataMetric.toUpperCase()}
                 {hmaiData.timestamp && (
                   <span className="ml-2">
-                    (Last updated: {new Date(hmaiData.timestamp).toLocaleString()})
+                    (Last updated:{' '}
+                    {new Date(hmaiData.timestamp).toLocaleString()})
                   </span>
                 )}
               </p>
-              
+
               {hmaiData.data && hmaiData.data.length > 0 ? (
                 <div className="max-h-96 overflow-y-auto">
                   <table className="min-w-full divide-y divide-gray-200">
@@ -557,7 +977,8 @@ export default function HMAIPage() {
               ) : (
                 <div className="text-center py-8">
                   <p className="text-sm text-gray-500">
-                    No data available for this metric. Start ingestion to populate data.
+                    No data available for this metric. Start ingestion to
+                    populate data.
                   </p>
                 </div>
               )}
@@ -568,9 +989,7 @@ export default function HMAIPage() {
             </div>
           ) : (
             <div className="text-center py-8">
-              <p className="text-sm text-gray-500">
-                Select a metric to view data
-              </p>
+              <p className="text-sm text-gray-500">Select a metric to view data</p>
             </div>
           )}
         </div>
@@ -578,4 +997,3 @@ export default function HMAIPage() {
     </div>
   );
 }
-
