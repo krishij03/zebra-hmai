@@ -139,19 +139,66 @@ export default function RMF3Page() {
           <div>
             <div className="mb-4 pb-4 border-b border-gray-200">
               <h3 className="text-lg font-medium text-gray-900">
-                {selectedReportType}
+                {report.title || selectedReportType}
               </h3>
               <p className="text-sm text-gray-500">
-                Last updated: {new Date(report.timestamp).toLocaleString()}
+                {report.metadata?.fetchedAt ? (
+                  <>Last updated: {new Date(report.metadata.fetchedAt).toLocaleString()}</>
+                ) : (
+                  <>Time: {report.timestart} - {report.timeend}</>
+                )}
               </p>
             </div>
 
-            {/* Raw Data Display (replace with charts later) */}
-            <div className="overflow-x-auto">
-              <pre className="text-xs bg-gray-50 p-4 rounded">
-                {JSON.stringify(report.data, null, 2)}
-              </pre>
-            </div>
+            {/* Caption Data */}
+            {report.caption && Object.keys(report.caption).length > 0 && (
+              <div className="mb-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Summary</h4>
+                <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {Object.entries(report.caption).map(([key, value]) => (
+                    <div key={key} className="bg-gray-50 p-3 rounded">
+                      <dt className="text-xs font-medium text-gray-500">{key}</dt>
+                      <dd className="text-sm font-semibold text-gray-900">{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            )}
+
+            {/* Table Data */}
+            {report.table && report.table.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      {report.columnhead?.map((header) => (
+                        <th
+                          key={header}
+                          className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          {header}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {report.table.map((row, idx) => (
+                      <tr key={idx}>
+                        {report.columnhead?.map((header) => (
+                          <td key={header} className="px-4 py-2 text-sm text-gray-900 whitespace-nowrap">
+                            {row[header] || '-'}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-sm text-gray-500">No table data available for this report.</p>
+              </div>
+            )}
           </div>
         )}
 
