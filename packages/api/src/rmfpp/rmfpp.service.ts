@@ -6,7 +6,7 @@ import { Injectable, NotFoundException, BadRequestException, InternalServerError
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '../config/config.service';
 import { LoggerService } from '../logger/logger.service';
-import { XMLParser } from 'fast-xml-parser';
+import * as xml2js from 'xml2js';
 import { firstValueFrom } from 'rxjs';
 import type { RMFPostProcessorResponseDTO } from '@zebra/shared/dtos';
 
@@ -45,21 +45,15 @@ interface DDSMLReport {
 
 @Injectable()
 export class RMFPPService {
-  private readonly parser: XMLParser;
+  private readonly parser: xml2js.Parser;
 
   constructor(
     private readonly http: HttpService,
     private readonly config: ConfigService,
     private readonly logger: LoggerService,
   ) {
-    // Initialize fast-xml-parser
-    this.parser = new XMLParser({
-      ignoreAttributes: false,
-      attributeNamePrefix: '',
-      textNodeName: '_',
-      parseAttributeValue: false,
-      trimValues: true,
-    });
+    // Initialize xml2js parser (same as legacy code)
+    this.parser = new xml2js.Parser();
   }
 
   /**
@@ -99,7 +93,7 @@ export class RMFPPService {
     try {
       this.logger.log(`Fetching RMFPP report: ${report} for LPAR: ${lpar}`, 'RMFPPService');
 
-      // Make HTTP request
+      // Make HTTP request with TLS v1.0 support
       const response = await firstValueFrom(
         this.http.get(fullUrl, {
           auth:
@@ -112,11 +106,16 @@ export class RMFPPService {
           headers: {
             Accept: 'application/xml, text/xml',
           },
+          httpsAgent: new (require('https').Agent)({
+            minVersion: 'TLSv1',
+            maxVersion: 'TLSv1.2',
+            rejectUnauthorized: false, // Allow self-signed certs for mainframe
+          }),
         }),
       );
 
       // Parse XML response
-      const parsedData = this.parseXML(response.data);
+      const parsedData = await this.parseXML(response.data);
 
       // Add metadata
       const result: RMFPostProcessorResponseDTO = {
@@ -147,66 +146,146 @@ export class RMFPPService {
   }
 
   /**
-   * Parse XML response from DDS
+   * Parse XML response from DDS (using xml2js - same as legacy code)
    */
-  private parseXML(xml: string): Omit<RMFPostProcessorResponseDTO, 'metadata'> {
-    try {
-      const result: DDSMLReport = this.parser.parse(xml);
-
-      if (!result?.ddsml?.report?.[0]) {
-        throw new Error('Invalid XML structure: missing ddsml.report');
-      }
-
-      const report = result.ddsml.report[0];
-
-      // Extract basic information
-      const timestart = report['time-data']?.[0]?.['display-start']?.[0]?._ || '';
-      const timeend = report['time-data']?.[0]?.['display-end']?.[0]?._ || '';
-      const title = report.metric?.[0]?.description?.[0] || 'RMF Post Processor Report';
-
-      // Extract column headers
-      const columnHeaders = report['column-headers']?.[0]?.col || [];
-      const columnhead = columnHeaders.map((col) => (typeof col === 'object' && col._ ? col._ : String(col)));
-
-      // Extract caption (optional)
-      let caption: Record<string, string> | undefined;
-      if (report.caption?.[0]?.var) {
-        caption = {};
-        for (const v of report.caption[0].var) {
-          const name = v.name?.[0];
-          const value = v.value?.[0];
-          if (name && value) {
-            caption[name] = value;
-          }
+  private async parseXML(xml: string): Promise<Omit<RMFPostProcessorResponseDTO, 'metadata'>> {
+    return new Promise((resolve, reject) => {
+      this.parser.parseString(xml, (err, result: any) => {
+        if (err) {
+          this.logger.error('XML parsing error', err.stack || err.message, 'RMFPPService');
+          return reject(new InternalServerErrorException('Failed to parse RMFPP XML response'));
         }
-      }
 
-      // Extract table data
-      const table: Array<Record<string, string>> = [];
-      if (report.row) {
-        for (const row of report.row) {
-          if (row.col) {
-            const rowData: Record<string, string> = {};
-            for (let i = 0; i < columnhead.length && i < row.col.length; i++) {
-              rowData[columnhead[i]] = row.col[i];
+        try {
+          if (!result?.ddsml?.postprocessor) {
+            throw new Error('Invalid XML structure: missing ddsml.postprocessor');
+          }
+
+          const postprocessors = result.ddsml.postprocessor;
+          const finalJSON: any = {};
+
+          for (const pp of postprocessors) {
+            const singleReport: any = {};
+            const segments = pp.segment;
+            const resourceName = pp.resource?.[0]?.resname?.[0];
+            const reportId = pp.metric?.[0]?.$?.id;
+            const allSegmentCollection: any = {};
+
+            if (segments) {
+              for (const segment of segments) {
+                const parts = segment.part;
+                const segmentName = segment.name?.[0];
+                const message = segment.message;
+                const partCollection: any = {};
+
+                if (parts) {
+                  for (const part of parts) {
+                    const partName = part.name;
+                    const varlist = part['var-list'];
+                    const table = part.table;
+                    let fieldCollection: any = {};
+
+                    if (varlist) {
+                      const variables = varlist[0].var;
+                      for (const v of variables) {
+                        fieldCollection[v.name[0]] = v.value[0];
+                      }
+                    }
+
+                    if (table) {
+                      const tableColumnHeader = table[0]['column-headers'][0].col;
+                      const tableBody = table[0].row;
+                      const columnheadCollection: string[] = [];
+                      const finalTableReport: any[] = [];
+
+                      for (const col of tableColumnHeader) {
+                        columnheadCollection.push(col._ ? col._ : 'Name');
+                      }
+
+                      if (tableBody) {
+                        for (const row of tableBody) {
+                          const partTable: any = {};
+                          for (let j = 0; j < columnheadCollection.length; j++) {
+                            partTable[columnheadCollection[j]] = row.col[j];
+                          }
+                          finalTableReport.push(partTable);
+                        }
+                      }
+
+                      if (!varlist) {
+                        fieldCollection = finalTableReport;
+                      } else {
+                        fieldCollection['Table'] = finalTableReport;
+                      }
+                    }
+
+                    const pName = Array.isArray(partName) ? partName[0] : partName;
+                    if (pName && pName !== '') {
+                      partCollection[pName] = fieldCollection;
+                    } else {
+                      partCollection['Info'] = fieldCollection;
+                    }
+
+                    if (Object.keys(partCollection).length === 1 && Object.keys(partCollection)[0] === 'Info') {
+                      Object.assign(partCollection, partCollection['Info']);
+                      delete partCollection['Info'];
+                    }
+
+                    if (message) {
+                      const messageDescription = message[0].description[0];
+                      const messageSeverity = message[0].severity[0];
+                      partCollection['Message'] = {
+                        Description: messageDescription,
+                        Severity: messageSeverity,
+                      };
+                    }
+                  }
+                }
+
+                allSegmentCollection[segmentName] = partCollection;
+              }
             }
-            table.push(rowData);
-          }
-        }
-      }
 
-      return {
-        title,
-        timestart,
-        timeend,
-        columnhead,
-        caption,
-        table,
-      };
-    } catch (error) {
-      this.logger.error('XML parsing failed', error.stack, 'RMFPPService');
-      throw new InternalServerErrorException('Failed to parse RMFPP XML response');
-    }
+            singleReport['Report'] = pp.metric?.[0]?.description?.[0];
+            singleReport['System'] = resourceName;
+            singleReport['Timestamp'] = pp['time-data']?.[0]?.['display-start']?.[0]?._;
+
+            if (reportId === 'WLMGL') {
+              const segKeys = Object.keys(allSegmentCollection);
+              singleReport['Classes'] = segKeys.map((key) => ({
+                Name: key,
+                ...allSegmentCollection[key],
+              }));
+            } else {
+              Object.assign(singleReport, allSegmentCollection);
+            }
+
+            if (finalJSON[reportId]) {
+              finalJSON[reportId].push(singleReport);
+            } else {
+              finalJSON[reportId] = [singleReport];
+            }
+          }
+
+          // If only one report ID, extract data into root object
+          const finalKeys = Object.keys(finalJSON);
+          let parsedData = finalJSON;
+          if (finalKeys.length === 1) {
+            parsedData = finalJSON[finalKeys[0]];
+          }
+
+          resolve({
+            data: parsedData,
+            title: 'RMF Post Processor Report',
+            timestart: parsedData[0]?.Timestamp || '',
+            timeend: parsedData[parsedData.length - 1]?.Timestamp || '',
+          });
+        } catch (error) {
+          this.logger.error('XML structure parsing failed', error.stack, 'RMFPPService');
+          reject(new InternalServerErrorException('Failed to parse RMFPP XML structure'));
+        }
+      });
+    });
   }
 
   /**

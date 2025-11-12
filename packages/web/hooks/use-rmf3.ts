@@ -6,10 +6,17 @@ import { useQuery, type UseQueryOptions } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
 
 export interface RMF3Report {
-  timestamp: string;
-  lparName: string;
-  reportType: string;
-  data: Record<string, unknown>;
+  title: string;
+  timestart: string;
+  timeend: string;
+  columnhead: string[];
+  caption?: Record<string, string>;
+  table: Array<Record<string, string>>;
+  metadata?: {
+    lpar: string;
+    report: string;
+    fetchedAt: string;
+  };
 }
 
 /**

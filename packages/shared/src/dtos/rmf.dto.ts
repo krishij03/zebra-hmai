@@ -118,12 +118,8 @@ export const rmfPostProcessorResponseSchema = z.object({
   timestart: z.string(),
   /** End timestamp */
   timeend: z.string(),
-  /** Column headers */
-  columnhead: z.array(z.string()),
-  /** Optional caption key-value pairs */
-  caption: z.record(z.string()).optional(),
-  /** Table data rows */
-  table: z.array(z.record(z.string())),
+  /** Parsed RMFPP data (complex structure with segments and parts) */
+  data: z.any(),
   /** Metadata */
   metadata: z
     .object({
