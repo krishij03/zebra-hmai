@@ -121,4 +121,54 @@ export function useHMAIMetrics() {
   });
 }
 
+/**
+ * Clear HMAI database and memory for an LPAR
+ */
+export function useClearHMAIDatabase(lpar: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const response = await apiClient.post(`/hmai/${lpar}/clear-database`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hmai', lpar] });
+    },
+  });
+}
+
+/**
+ * Start HMAI ingestion for all configured LPARs
+ */
+export function useStartAllHMAI() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const response = await apiClient.post('/hmai/ingestion/start-all');
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hmai'] });
+    },
+  });
+}
+
+/**
+ * Get running HMAI processes for all LPARs
+ */
+export function useRunningHMAIProcesses() {
+  return useQuery({
+    queryKey: ['hmai', 'running-processes'],
+    queryFn: async () => {
+      const response = await apiClient.get<
+        Record<string, { isRunning: boolean; continuousMonitoring: boolean }>
+      >('/hmai/running-processes');
+      return response.data;
+    },
+    refetchInterval: 10000, // Poll every 10 seconds
+  });
+}
+
 

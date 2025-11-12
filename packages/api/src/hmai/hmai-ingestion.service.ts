@@ -7,7 +7,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue, Job as BullJob } from 'bullmq';
 import { ConfigService } from '../config/config.service';
 import { LoggerService } from '../logger/logger.service';
-import { HMAIMetric } from './hmai-tables';
+import { HMAIMetric, HMAI_METRICS } from './hmai-tables';
 import { HMAIIngestionJobData } from './hmai.processor';
 import type {
   HMAIIngestionStatusRequestDTO,
@@ -167,6 +167,175 @@ export class HMAIIngestionService {
     }
 
     this.logger.log(`Stopped ingestion for ${lpar}`, 'HMAIIngestionService');
+  }
+
+  /**
+   * Clear database and memory for an LPAR
+   */
+  async clearDatabase(lpar: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const lparConfig = this.config.getLparConfig(lpar);
+      if (!lparConfig || !lparConfig.hmai) {
+        throw new BadRequestException(`HMAI not configured for LPAR '${lpar}'`);
+      }
+
+      // Import services here to avoid circular dependency
+      const { MemoryService } = await import('../common/memory.service');
+      const { HMAIDatabaseService } = await import('./hmai-database.service');
+      
+      const memoryService = new MemoryService(this.logger);
+      const dbService = new HMAIDatabaseService(this.logger, this.config);
+
+      // Connect to MySQL
+      const connection = await dbService.createConnection(lpar);
+      
+      // Ensure database exists
+      await dbService.ensureDatabase(connection, lpar);
+
+      // Truncate all tables
+      const metrics: HMAIMetric[] = ['clpr', 'ldev', 'mpb', 'mprank20', 'pgrp', 'port'];
+      
+      for (const metric of metrics) {
+        try {
+          await connection.query(`TRUNCATE TABLE ${metric}`);
+          this.logger.log(`Truncated table ${metric}`, 'HMAIIngestionService');
+        } catch (error) {
+          // Table might not exist, continue
+          this.logger.warn(`Failed to truncate ${metric}: ${error.message}`, 'HMAIIngestionService');
+        }
+      }
+
+      // Clear memory
+      await memoryService.clearLparData('hmai', lpar);
+
+      // Stop any running processes
+      await this.stopIngestion(lpar);
+
+      // Close connection
+      await dbService.closeConnection(connection);
+
+      return {
+        success: true,
+        message: `All data cleared for ${lpar}`,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to clear database for ${lpar}: ${error.message}`, error.stack, 'HMAIIngestionService');
+      throw error;
+    }
+  }
+
+  /**
+   * Start HMAI ingestion for all configured LPARs
+   */
+  async startAllLpars(): Promise<{
+    success: boolean;
+    message: string;
+    startedLpars: string[];
+    skippedLpars: string[];
+    alreadyRunningLpars: string[];
+  }> {
+    const startedLpars: string[] = [];
+    const skippedLpars: string[] = [];
+    const alreadyRunningLpars: string[] = [];
+
+    const allMetrics: HMAIMetric[] = ['clpr', 'ldev', 'mpb', 'mprank20', 'pgrp', 'port'];
+    
+    // Get all LPARs
+    const lpars = this.config.getLpars();
+
+    // Check active jobs
+    const activeJobs = await this.hmaiQueue.getActive();
+    const activeLpars = activeJobs.map((job) => job.data.lpar);
+
+    for (const lpar of lpars) {
+      try {
+        // Check if already running
+        if (activeLpars.includes(lpar)) {
+          alreadyRunningLpars.push(lpar);
+          continue;
+        }
+
+        const lparConfig = this.config.getLparConfig(lpar);
+        
+        // Check if HMAI is properly configured
+        if (!this.isLparConfiguredForHMAI(lparConfig)) {
+          skippedLpars.push(lpar);
+          continue;
+        }
+
+        // Start ingestion with continuous monitoring
+        const hmaiConfig = lparConfig.hmai!;
+        await this.startIngestion({
+          lpar,
+          metrics: allMetrics,
+          startDate: hmaiConfig.defaultStartDate || new Date().toISOString().split('T')[0],
+          continuousMonitoring: true,
+          force: false,
+        });
+
+        startedLpars.push(lpar);
+        this.logger.log(`Started HMAI for ${lpar}`, 'HMAIIngestionService');
+      } catch (error) {
+        this.logger.error(`Failed to start HMAI for ${lpar}: ${error.message}`, error.stack, 'HMAIIngestionService');
+        skippedLpars.push(lpar);
+      }
+    }
+
+    return {
+      success: true,
+      message: 'HMAI process started for configured LPARs',
+      startedLpars,
+      skippedLpars,
+      alreadyRunningLpars,
+    };
+  }
+
+  /**
+   * Get running processes for all LPARs
+   */
+  async getRunningProcesses(): Promise<Record<string, { isRunning: boolean; continuousMonitoring: boolean }>> {
+    const result: Record<string, { isRunning: boolean; continuousMonitoring: boolean }> = {};
+
+    // Get all active and waiting jobs
+    const jobs = await this.hmaiQueue.getJobs(['active', 'waiting', 'delayed']);
+    
+    // Get repeatable jobs
+    const repeatableJobs = await this.hmaiQueue.getRepeatableJobs();
+    const continuousLpars = new Set(
+      repeatableJobs
+        .map((job) => job.id?.replace('hmai-continuous-', ''))
+        .filter(Boolean)
+    );
+
+    // Build result map
+    for (const job of jobs) {
+      const lpar = job.data.lpar;
+      result[lpar] = {
+        isRunning: true,
+        continuousMonitoring: continuousLpars.has(lpar),
+      };
+    }
+
+    return result;
+  }
+
+  /**
+   * Check if LPAR is properly configured for HMAI
+   */
+  private isLparConfiguredForHMAI(lparConfig: any): boolean {
+    return (
+      lparConfig &&
+      lparConfig.hmai &&
+      lparConfig.hmai.ftp &&
+      lparConfig.hmai.ftp.directory &&
+      lparConfig.hmai.mysql &&
+      lparConfig.hmai.mysql.host &&
+      lparConfig.hmai.mysql.user &&
+      lparConfig.hmai.mysql.password &&
+      lparConfig.hmai.checkInterval &&
+      lparConfig.hmai.defaultStartDate &&
+      lparConfig.hmai.continuousMonitoring === true
+    );
   }
 }
 

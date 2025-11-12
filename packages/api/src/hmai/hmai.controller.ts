@@ -179,4 +179,49 @@ export class HMAIController {
       metric: metric as 'clpr' | 'ldev' | 'mpb' | 'mprank20' | 'pgrp' | 'port',
     });
   }
+
+  @Post(':lpar/clear-database')
+  @ApiOperation({
+    summary: 'Clear HMAI database and memory',
+    description: 'Truncate all HMAI tables and clear memory files for the specified LPAR',
+  })
+  @ApiParam({
+    name: 'lpar',
+    description: 'LPAR name',
+    example: 'LPAR1',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Database and memory cleared successfully',
+  })
+  async clearDatabase(@Param('lpar') lpar: string) {
+    return this.ingestionService.clearDatabase(lpar);
+  }
+
+  @Post('ingestion/start-all')
+  @ApiOperation({
+    summary: 'Start HMAI ingestion for all configured LPARs',
+    description: 'Start HMAI data ingestion for all LPARs that have complete HMAI configuration',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'HMAI started for configured LPARs',
+  })
+  async startAllLpars() {
+    return this.ingestionService.startAllLpars();
+  }
+
+  @Get('running-processes')
+  @ApiOperation({
+    summary: 'Get running HMAI processes',
+    description: 'Get list of all LPARs with currently running HMAI ingestion jobs',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Running processes retrieved',
+    type: Object,
+  })
+  async getRunningProcesses() {
+    return this.ingestionService.getRunningProcesses();
+  }
 }

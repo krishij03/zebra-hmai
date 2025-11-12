@@ -151,60 +151,60 @@ export class RMF3Service {
         }
 
         try {
-          if (!result?.ddsml?.report?.[0]) {
-            throw new Error('Invalid XML structure: missing ddsml.report');
-          }
+      if (!result?.ddsml?.report?.[0]) {
+        throw new Error('Invalid XML structure: missing ddsml.report');
+      }
 
-          const report = result.ddsml.report[0];
+      const report = result.ddsml.report[0];
 
           // Extract basic information (same structure as legacy parser)
-          const timestart = report['time-data']?.[0]?.['display-start']?.[0]?._ || '';
-          const timeend = report['time-data']?.[0]?.['display-end']?.[0]?._ || '';
-          const title = report.metric?.[0]?.description?.[0] || 'RMF Monitor III Report';
+      const timestart = report['time-data']?.[0]?.['display-start']?.[0]?._ || '';
+      const timeend = report['time-data']?.[0]?.['display-end']?.[0]?._ || '';
+      const title = report.metric?.[0]?.description?.[0] || 'RMF Monitor III Report';
 
-          // Extract column headers
-          const columnHeaders = report['column-headers']?.[0]?.col || [];
-          const columnhead = columnHeaders.map((col) => (typeof col === 'object' && col._ ? col._ : String(col)));
+      // Extract column headers
+      const columnHeaders = report['column-headers']?.[0]?.col || [];
+      const columnhead = columnHeaders.map((col) => (typeof col === 'object' && col._ ? col._ : String(col)));
 
-          // Extract caption (optional)
-          let caption: Record<string, string> | undefined;
-          if (report.caption?.[0]?.var) {
-            caption = {};
-            for (const v of report.caption[0].var) {
-              const name = v.name?.[0];
-              const value = v.value?.[0];
-              if (name && value) {
-                caption[name] = value;
-              }
-            }
+      // Extract caption (optional)
+      let caption: Record<string, string> | undefined;
+      if (report.caption?.[0]?.var) {
+        caption = {};
+        for (const v of report.caption[0].var) {
+          const name = v.name?.[0];
+          const value = v.value?.[0];
+          if (name && value) {
+            caption[name] = value;
           }
+        }
+      }
 
-          // Extract table data
-          const table: Array<Record<string, string>> = [];
-          if (report.row) {
-            for (const row of report.row) {
-              if (row.col) {
-                const rowData: Record<string, string> = {};
-                for (let i = 0; i < columnhead.length && i < row.col.length; i++) {
-                  rowData[columnhead[i]] = row.col[i];
-                }
-                table.push(rowData);
-              }
+      // Extract table data
+      const table: Array<Record<string, string>> = [];
+      if (report.row) {
+        for (const row of report.row) {
+          if (row.col) {
+            const rowData: Record<string, string> = {};
+            for (let i = 0; i < columnhead.length && i < row.col.length; i++) {
+              rowData[columnhead[i]] = row.col[i];
             }
+            table.push(rowData);
           }
+        }
+      }
 
           resolve({
-            title,
-            timestart,
-            timeend,
-            columnhead,
-            caption,
-            table,
+        title,
+        timestart,
+        timeend,
+        columnhead,
+        caption,
+        table,
           });
-        } catch (error) {
+    } catch (error) {
           this.logger.error('XML structure parsing failed', error.stack, 'RMF3Service');
           reject(new InternalServerErrorException('Failed to parse RMF3 XML structure'));
-        }
+    }
       });
     });
   }

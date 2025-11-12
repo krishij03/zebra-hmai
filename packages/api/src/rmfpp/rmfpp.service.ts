@@ -159,7 +159,7 @@ export class RMFPPService {
         try {
           if (!result?.ddsml?.postprocessor) {
             throw new Error('Invalid XML structure: missing ddsml.postprocessor');
-          }
+      }
 
           const postprocessors = result.ddsml.postprocessor;
           const finalJSON: any = {};
@@ -238,9 +238,9 @@ export class RMFPPService {
                         Description: messageDescription,
                         Severity: messageSeverity,
                       };
-                    }
-                  }
-                }
+          }
+        }
+      }
 
                 allSegmentCollection[segmentName] = partCollection;
               }
@@ -272,7 +272,7 @@ export class RMFPPService {
           let parsedData = finalJSON;
           if (finalKeys.length === 1) {
             parsedData = finalJSON[finalKeys[0]];
-          }
+            }
 
           resolve({
             data: parsedData,
@@ -280,10 +280,10 @@ export class RMFPPService {
             timestart: parsedData[0]?.Timestamp || '',
             timeend: parsedData[parsedData.length - 1]?.Timestamp || '',
           });
-        } catch (error) {
+    } catch (error) {
           this.logger.error('XML structure parsing failed', error.stack, 'RMFPPService');
           reject(new InternalServerErrorException('Failed to parse RMFPP XML structure'));
-        }
+    }
       });
     });
   }

@@ -167,7 +167,7 @@ export default function RMF3Page() {
 
             {/* Table Data */}
             {report.table && report.table.length > 0 ? (
-              <div className="overflow-x-auto">
+            <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
@@ -197,7 +197,7 @@ export default function RMF3Page() {
             ) : (
               <div className="text-center py-8">
                 <p className="text-sm text-gray-500">No table data available for this report.</p>
-              </div>
+            </div>
             )}
           </div>
         )}
