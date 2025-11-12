@@ -96,17 +96,17 @@ async function bootstrap() {
   app.useLogger(app.get(LoggerService));
 
   // Enable CORS with configuration
-  // When credentials: true, origin cannot be wildcard '*'
-  const allowedOrigins = process.env.CORS_ORIGINS?.split(',') || [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-  ];
-  
+  // Allow all origins for development/testing
+  // Use a function to dynamically allow any origin while keeping credentials: true
   app.enableCors({
-    origin: allowedOrigins,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, Postman, curl)
+      // Or allow any origin for development
+      callback(null, true);
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
   });
 
   // Global validation pipe with Zod

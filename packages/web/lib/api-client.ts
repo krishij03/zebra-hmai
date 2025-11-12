@@ -6,7 +6,26 @@
 import axios, { type AxiosError, type AxiosInstance } from 'axios';
 import Cookies from 'js-cookie';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3090/api/v2';
+// Determine API URL based on environment or current host
+// This allows the frontend to work whether accessed via localhost or IP address
+const getApiUrl = () => {
+  // If explicit env var is set, use it
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  
+  // In browser, use the current host to build API URL
+  if (typeof window !== 'undefined') {
+    const protocol = window.location.protocol; // http: or https:
+    const hostname = window.location.hostname; // e.g., 172.23.91.25 or localhost
+    return `${protocol}//${hostname}:3090/api/v2`;
+  }
+  
+  // Fallback for SSR
+  return 'http://localhost:3090/api/v2';
+};
+
+const API_URL = getApiUrl();
 const API_TIMEOUT = Number(process.env.NEXT_PUBLIC_API_TIMEOUT) || 30000;
 
 /**
