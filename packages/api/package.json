@@ -6,8 +6,8 @@
   "scripts": {
     "build": "nest build",
     "start": "nest start",
-    "start:dev": "DISABLE_AUTH=true DISABLE_REDIS=true nest start --watch",
-    "start:debug": "DISABLE_AUTH=true DISABLE_REDIS=true nest start --debug --watch",
+    "start:dev": "DISABLE_AUTH=true nest start --watch",
+    "start:debug": "DISABLE_AUTH=true nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "biome check --apply-unsafe .",
     "format": "biome format --write .",
