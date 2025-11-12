@@ -82,5 +82,8 @@ tmp/
 /EMPTY-STRING-FIX.md
 /RHEL-DEPLOYMENT.md
 /REDIS-FIX-SUMMARY.md
+/RMF3-PARSER-FIX.md
+/PROMETHEUS-METRICS-FIX.md
+config/README-PROMETHEUS.md
 /start-rhel.sh
 zebra-*.log

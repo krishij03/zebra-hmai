@@ -19,8 +19,10 @@ if (!process.env.CONFIG_PATH) {
 }
 
 // Set METRICS_CONFIG_PATH to absolute path if not already set
+// When compiled: __dirname = packages/api/dist
+// So ../../../config/metrics.json goes up to root, then to config/
 if (!process.env.METRICS_CONFIG_PATH) {
-  process.env.METRICS_CONFIG_PATH = resolve(__dirname, '../../../src/metrics.json');
+  process.env.METRICS_CONFIG_PATH = resolve(__dirname, '../../../config/metrics.json');
 } else if (!process.env.METRICS_CONFIG_PATH.startsWith('/')) {
   process.env.METRICS_CONFIG_PATH = resolve(__dirname, '..', process.env.METRICS_CONFIG_PATH);
 }

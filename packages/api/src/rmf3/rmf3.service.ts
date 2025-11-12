@@ -6,7 +6,7 @@ import { Injectable, NotFoundException, BadRequestException, InternalServerError
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '../config/config.service';
 import { LoggerService } from '../logger/logger.service';
-import { XMLParser } from 'fast-xml-parser';
+import * as xml2js from 'xml2js';
 import { firstValueFrom } from 'rxjs';
 import type { RMFMonitor3ResponseDTO } from '@zebra/shared/dtos';
 import { REPORT_TYPE_MAP } from '@zebra/shared/constants';
@@ -46,21 +46,15 @@ interface DDSMLReport {
 
 @Injectable()
 export class RMF3Service {
-  private readonly parser: XMLParser;
+  private readonly parser: xml2js.Parser;
 
   constructor(
     private readonly http: HttpService,
     private readonly config: ConfigService,
     private readonly logger: LoggerService,
   ) {
-    // Initialize fast-xml-parser with options similar to xml2js
-    this.parser = new XMLParser({
-      ignoreAttributes: false,
-      attributeNamePrefix: '',
-      textNodeName: '_',
-      parseAttributeValue: false,
-      trimValues: true,
-    });
+    // Initialize xml2js parser (same as legacy code)
+    this.parser = new xml2js.Parser();
   }
 
   /**
@@ -115,7 +109,7 @@ export class RMF3Service {
       );
 
       // Parse XML response
-      const parsedData = this.parseXML(response.data);
+      const parsedData = await this.parseXML(response.data);
 
       // Add metadata
       const result: RMFMonitor3ResponseDTO = {
@@ -146,66 +140,73 @@ export class RMF3Service {
   }
 
   /**
-   * Parse XML response from DDS
+   * Parse XML response from DDS (using xml2js - same as legacy code)
    */
-  private parseXML(xml: string): Omit<RMFMonitor3ResponseDTO, 'metadata'> {
-    try {
-      const result: DDSMLReport = this.parser.parse(xml);
-
-      if (!result?.ddsml?.report?.[0]) {
-        throw new Error('Invalid XML structure: missing ddsml.report');
-      }
-
-      const report = result.ddsml.report[0];
-
-      // Extract basic information
-      const timestart = report['time-data']?.[0]?.['display-start']?.[0]?._ || '';
-      const timeend = report['time-data']?.[0]?.['display-end']?.[0]?._ || '';
-      const title = report.metric?.[0]?.description?.[0] || 'RMF Monitor III Report';
-
-      // Extract column headers
-      const columnHeaders = report['column-headers']?.[0]?.col || [];
-      const columnhead = columnHeaders.map((col) => (typeof col === 'object' && col._ ? col._ : String(col)));
-
-      // Extract caption (optional)
-      let caption: Record<string, string> | undefined;
-      if (report.caption?.[0]?.var) {
-        caption = {};
-        for (const v of report.caption[0].var) {
-          const name = v.name?.[0];
-          const value = v.value?.[0];
-          if (name && value) {
-            caption[name] = value;
-          }
+  private async parseXML(xml: string): Promise<Omit<RMFMonitor3ResponseDTO, 'metadata'>> {
+    return new Promise((resolve, reject) => {
+      this.parser.parseString(xml, (err, result: DDSMLReport) => {
+        if (err) {
+          this.logger.error('XML parsing error', err.stack || err.message, 'RMF3Service');
+          return reject(new InternalServerErrorException('Failed to parse RMF3 XML response'));
         }
-      }
 
-      // Extract table data
-      const table: Array<Record<string, string>> = [];
-      if (report.row) {
-        for (const row of report.row) {
-          if (row.col) {
-            const rowData: Record<string, string> = {};
-            for (let i = 0; i < columnhead.length && i < row.col.length; i++) {
-              rowData[columnhead[i]] = row.col[i];
+        try {
+          if (!result?.ddsml?.report?.[0]) {
+            throw new Error('Invalid XML structure: missing ddsml.report');
+          }
+
+          const report = result.ddsml.report[0];
+
+          // Extract basic information (same structure as legacy parser)
+          const timestart = report['time-data']?.[0]?.['display-start']?.[0]?._ || '';
+          const timeend = report['time-data']?.[0]?.['display-end']?.[0]?._ || '';
+          const title = report.metric?.[0]?.description?.[0] || 'RMF Monitor III Report';
+
+          // Extract column headers
+          const columnHeaders = report['column-headers']?.[0]?.col || [];
+          const columnhead = columnHeaders.map((col) => (typeof col === 'object' && col._ ? col._ : String(col)));
+
+          // Extract caption (optional)
+          let caption: Record<string, string> | undefined;
+          if (report.caption?.[0]?.var) {
+            caption = {};
+            for (const v of report.caption[0].var) {
+              const name = v.name?.[0];
+              const value = v.value?.[0];
+              if (name && value) {
+                caption[name] = value;
+              }
             }
-            table.push(rowData);
           }
-        }
-      }
 
-      return {
-        title,
-        timestart,
-        timeend,
-        columnhead,
-        caption,
-        table,
-      };
-    } catch (error) {
-      this.logger.error('XML parsing failed', error.stack, 'RMF3Service');
-      throw new InternalServerErrorException('Failed to parse RMF3 XML response');
-    }
+          // Extract table data
+          const table: Array<Record<string, string>> = [];
+          if (report.row) {
+            for (const row of report.row) {
+              if (row.col) {
+                const rowData: Record<string, string> = {};
+                for (let i = 0; i < columnhead.length && i < row.col.length; i++) {
+                  rowData[columnhead[i]] = row.col[i];
+                }
+                table.push(rowData);
+              }
+            }
+          }
+
+          resolve({
+            title,
+            timestart,
+            timeend,
+            columnhead,
+            caption,
+            table,
+          });
+        } catch (error) {
+          this.logger.error('XML structure parsing failed', error.stack, 'RMF3Service');
+          reject(new InternalServerErrorException('Failed to parse RMF3 XML structure'));
+        }
+      });
+    });
   }
 
   /**

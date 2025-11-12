@@ -7,10 +7,13 @@ import {
   OnModuleInit,
   OnModuleDestroy,
   InternalServerErrorException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '../config/config.service';
 import { LoggerService } from '../logger/logger.service';
+import { RMF3Service } from '../rmf3/rmf3.service';
 import { register, Gauge, collectDefaultMetrics } from 'prom-client';
 import { firstValueFrom } from 'rxjs';
 import * as fs from 'node:fs';
@@ -36,6 +39,8 @@ export class MetricsService implements OnModuleInit, OnModuleDestroy {
     private readonly http: HttpService,
     private readonly config: ConfigService,
     private readonly logger: LoggerService,
+    @Inject(forwardRef(() => RMF3Service))
+    private readonly rmf3Service: RMF3Service,
   ) {
     // Enable default metrics (CPU, memory, etc.)
     collectDefaultMetrics({ register });
@@ -309,51 +314,24 @@ export class MetricsService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Scrape a specific report
+   * Scrape a specific report using RMF3Service (which handles XML parsing)
    */
   private async scrapeReport(lpar: string, report: string, resource: string): Promise<void> {
-    const lparConfig = this.config.getLparConfig(lpar);
-    const baseUrl = `${lparConfig.ddshhttptype}://${lparConfig.ddsbaseurl}:${lparConfig.ddsbaseport}`;
-    const url = `${baseUrl}/gpm/${lparConfig.rmf3filename || 'rmfm3.xml'}?report=${report}&resource=${resource}`;
-
     try {
-      const response = await firstValueFrom(
-        this.http.get(url, {
-          auth:
-            lparConfig.ddsauth === 'true'
-              ? {
-                  username: lparConfig.ddsuser || '',
-                  password: lparConfig.ddspwd || '',
-                }
-              : undefined,
-          httpsAgent: new (require('https').Agent)({
-            minVersion: 'TLSv1',
-            maxVersion: 'TLSv1.2',
-            rejectUnauthorized: false, // Allow self-signed certs for mainframe
-          }),
-        }),
-      );
+      // Use RMF3Service to fetch and parse the report (uses xml2js like legacy code)
+      const result = await this.rmf3Service.getReport(lpar, report, { resource });
 
       // Process the response data for metrics matching this lpar and report
       const metricsToUpdate = Object.entries(this.metricsConfig).filter(
         ([_, metric]) => metric.lpar === lpar && metric.request.report === report,
       );
 
-      // Parse response - handle both RMF3Service format and raw XML
-      let data: any;
-      if (typeof response.data === 'string') {
-        // Would need to parse XML here, but for now assume we get JSON from our own RMF3 service
-        data = response.data;
-      } else {
-        data = response.data;
-      }
-
       // Extract metrics from the table data
       for (const [metricName, metric] of metricsToUpdate) {
-        this.processMetricData(metricName, metric, data);
+        this.processMetricData(metricName, metric, result);
       }
     } catch (error) {
-      throw new Error(`HTTP request failed for ${lpar}/${report}: ${error.message}`);
+      throw new Error(`Failed to scrape ${report} for ${lpar}: ${error.message}`);
     }
   }
 
