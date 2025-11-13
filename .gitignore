@@ -3,6 +3,10 @@ node_modules/
 .pnp
 .pnp.js
 
+# Package manager lock files (we use pnpm)
+package-lock.json
+yarn.lock
+
 # Testing
 coverage/
 playwright-report/
@@ -12,6 +16,10 @@ test-results/
 dist/
 build/
 *.tsbuildinfo
+
+# Next.js
+.next/
+out/
 
 # Logs
 logs/
@@ -37,6 +45,7 @@ pnpm-debug.log*
 *.swo
 *.sublime-*
 .DS_Store
+Thumbs.db
 
 # Database
 *.db
@@ -53,6 +62,26 @@ tmp/
 *.pid
 *.seed
 *.pid.lock
+
+# Configuration (contains sensitive data)
+/config/Zconfig.json
+
+# Memory directories (runtime data)
+/config/hmaiMemory/
+/config/dcolMemory/
+/config/hmreMemory/
+
+# Screenshot/Images in root
+/*.png
+/*.jpg
+/*.jpeg
+/*.gif
+
+# Deployment scripts (environment-specific)
+/deploy-rhel.sh
+/test-api.sh
+/test-endpoints.sh
+/test-validation.js
 
 # Project documentation and phase tracking (root level only)
 /CHECKOFF-PROTOCOL.md
@@ -96,3 +125,4 @@ HMAI-FRONTEND-COMPLETE.md
 HMAI-UI-ENHANCEMENTS.md
 HMAI-FEATURES-SUMMARY.md
 MODAL-FIX.md
+src/

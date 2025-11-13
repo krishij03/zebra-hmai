@@ -5,51 +5,40 @@
     - [About ZEBRA](#about-zebra)
 - [System Requirements](#system-requirements)
     - [Distributed Data Server (DDS)](#distributed-data-server-dds)
-    - [Node.js Version 8](#nodejs-version-8)
-    - [Docker (optional)](#docker-optional)
+    - [Node.js Version 22+](#nodejs-version-22)
+    - [Redis (Required for HMAI)](#redis-required-for-hmai)
+    - [pnpm Package Manager](#pnpm-package-manager)
 - [Built-in Third Party Support](#built-in-third-party-support)
     - [Configuring MongoDB](#configuring-mongodb)
     - [Configuring Prometheus](#configuring-prometheus)
     - [Configuring Grafana](#configuring-grafana)
     - [Configuring MySQL](#configuring-mysql)
-- [Installing ZEBRA](#installing-zebra)
+- [Installing ZEBRA TypeScript](#installing-zebra-typescript)
     - [Manual Installation](#manual-installation)
-    - [Docker Installation](#docker-installation)
-- [Installing HMAI ZEBRA](#installing-hmai-zebra) 
-	- [About](#about-zebra-hmai) 
-	- [Manual Installation](#manual-installation-1) 
-	- [Docker Installation](#docker-installation-1)
 - [Configuring ZEBRA's Settings](#configuring-zebras-settings)
     - [Field Definitions](#field-definitions)
         - [General Settings](#general-settings)
         - [DDS Settings](#dds-settings)
-    - [Config File](#config-file)
-    - [Settings Page](#settings-page)
+        - [HMAI Settings](#hmai-settings)
+    - [Config File Location](#config-file-location)
+    - [Example Configuration](#example-configuration)
+- [Starting ZEBRA](#starting-zebra)
 - [ZEBRA API](#zebra-api)
-    - [RMF Postprocessor (Monitor I) Reports](#rmf-postprocessor-monitor-i-reports)
-        - [List of Supported Postprocessor Reports](#list-of-supported-postprocessor-reports)
-        - [Request Format](#request-format)
-        - [Examples](#examples)
+    - [API Documentation](#api-documentation)
     - [RMF Monitor III Reports](#rmf-monitor-iii-reports)
         - [List of Supported Monitor III reports](#list-of-supported-monitor-iii-reports)
+        - [Request Format](#request-format)
+        - [Examples](#examples)
+    - [RMF Postprocessor (Monitor I) Reports](#rmf-postprocessor-monitor-i-reports)
+        - [List of Supported Postprocessor Reports](#list-of-supported-postprocessor-reports)
         - [Request Format](#request-format-1)
         - [Examples](#examples-1)
-    - [Individual RMF Metrics](#individual-rmf-metrics)
-        - [List of Supported RMF Metrics](#list-of-supported-rmf-metrics)
-        - [Request Format](#request-format-2)
-        - [Examples](#examples-2)
+    - [HMAI Ingestion API](#hmai-ingestion-api)
+        - [Available Endpoints](#available-endpoints)
     - [Exposing RMF Data to Prometheus](#exposing-rmf-data-to-prometheus)
-        - [Custom Metric Format](#custom-metric-format)
-        - [Creating a Prometheus Metric](#creating-a-prometheus-metric)
-        - [Retrieving a Prometheus Metric](#retrieving-a-prometheus-metric)
-        - [Updating a Prometheus Metric](#updating-a-prometheus-metric)
-        - [Deleting a Prometheus Metric](#deleting-a-prometheus-metric)
+        - [Metrics Endpoint](#metrics-endpoint)
+        - [Configuring Metrics](#configuring-metrics)
 - [Support](#support)
-- [Debugging in ZEBRA](#debugging-in-zebra)
-    - [Debug Configuration](#debug-configuration)
-    - [Toggling Debug Settings](#toggling-debug-settings)
-    - [Available Debug Settings](#available-debug-settings)
-    - [Important Notes](#important-notes)
 
 ### License Information 
 
@@ -63,6 +52,12 @@ Copyright Contributors to the Zowe Project.
 
 ZEBRA (Zowe Embedded Browser for RMF and APIs) is an open source incubator project for the Open Mainframe Project&copy;'s [Zowe](https://www.zowe.org/). The main goal of this project is to provide reusable and industry-compliant RMF data in JSON format. The benefit of using JSON is that it is a modern standard that is very attractive to developers. Because of this, there are many applications and use cases for third-party analysis and visualization tools to harvest ZEBRA's metrics.
 
+**TypeScript Rewrite:** This version of ZEBRA has been completely rewritten in TypeScript using modern frameworks:
+- **Backend:** NestJS with Fastify
+- **Frontend:** Next.js with React
+- **Monorepo:** pnpm workspaces for efficient development
+- **Type Safety:** Full TypeScript coverage for reliability
+
 ---
 
 # System Requirements
@@ -71,13 +66,62 @@ ZEBRA (Zowe Embedded Browser for RMF and APIs) is an open source incubator proje
 
 Currently, ZEBRA requires an instance of RMF DDS (GPMSERVE) running on z/OS as the source of its data. You can find out more about setting up the DDS [here](https://www.ibm.com/docs/en/zos/2.4.0?topic=rmf-setting-up-distributed-data-server-zos). 
 
-### Node.js Version 8
+### Node.js Version 22+
 
-ZEBRA makes use of the [Node.js](https://nodejs.org/download/release/v8.11.4/) runtime. **IMPORTANT:** It is imparitive that you are using an instance of Node.js **version 8**. Any version after 8 is currently not supported. If you are getting an error about parsing or getting the DDS data, this is a likely cause.
+ZEBRA makes use of the [Node.js](https://nodejs.org/) runtime. **IMPORTANT:** This TypeScript version requires Node.js **version 22 or higher**. 
 
-### Docker (optional)
+To check your Node.js version:
+```bash
+node --version
+# Should output v22.0.0 or higher
+```
 
-If you want to get ZEBRA set up as quick as possible, we recommend making use of containerization with [Docker](https://www.docker.com/). More information below on how to run and build the containerized version of ZEBRA.
+### Redis (Required for HMAI)
+
+Redis is **required** if you want to use HMAI (Hitachi Mainframe Analytics Interpreter) ingestion features. Redis is used for:
+- Background job queuing with BullMQ
+- Job persistence and retry mechanisms
+- Continuous monitoring support
+
+**Installation:**
+
+**RHEL/CentOS:**
+```bash
+sudo yum install redis
+sudo systemctl start redis
+sudo systemctl enable redis
+```
+
+**Ubuntu/Debian:**
+```bash
+sudo apt update
+sudo apt install redis-server
+sudo systemctl start redis
+sudo systemctl enable redis
+```
+
+**Verify Redis is running:**
+```bash
+redis-cli ping
+# Should return: PONG
+```
+
+**Note:** If Redis is not installed or not running, HMAI features will be automatically disabled, but RMF Monitor III and RMF Post Processor will still work.
+
+### pnpm Package Manager
+
+This project uses **pnpm** for package management in the monorepo structure.
+
+**Installation:**
+```bash
+npm install -g pnpm
+```
+
+**Verify installation:**
+```bash
+pnpm --version
+# Should output 9.0.0 or higher
+```
 
 ---
 
@@ -90,20 +134,20 @@ ZEBRA comes prebuilt with some integrations and frameworks for other software an
 | [MongoDB](https://www.mongodb.com/)  | Historical Database for RMF III Records    |
 | [Prometheus](https://prometheus.io/) | Realtime Data Scraping for RMF III Metrics |
 | [Grafana](https://grafana.com/)      | Visualization of RMF III Metrics           |
-
-There is some configuration required in order for these to work with ZEBRA. **NOTE:** If running ZEBRA using ```docker-compose```, all third party software will be installed with no manual configuration necessary.
+| [MySQL](https://www.mysql.com/)      | Storage for HMAI Metrics                   |
+| [Redis](https://redis.io/)           | Job Queue for HMAI Ingestion               |
 
 ### Configuring MongoDB
 
-No configuration needed beyond the standard installtion required in order to be compatible with ZEBRA. 
+No configuration needed beyond the standard installation required in order to be compatible with ZEBRA. 
 
-**Reminder:** ZEBRA has to be [configured](#configure) to work with MongoDB.
+**Reminder:** ZEBRA has to be configured to work with MongoDB via `config/Zconfig.json`.
 
 ### Configuring Prometheus
 
-After installing Prometheus, locate the ```prometheus.yml``` config file. You should clone and edit this file to look similar to
+After installing Prometheus, locate the `prometheus.yml` config file and edit it:
 
-```
+```yaml
 # my global config
 global:
   scrape_interval: 15s # Set the scrape interval to every 15 seconds. Default is every 1 minute.
@@ -128,27 +172,24 @@ scrape_configs:
   # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
   - job_name: "zebra"
   
-    metrics_path: "/prommetric"
-    scrape_interval: 60s
+    metrics_path: "/metrics"
+    scrape_interval: 120s
 
-    # metrics_path defaults to '/metrics'
     # scheme defaults to 'http'.
 
     static_configs:
-      - targets: ["localhost:3090"]
+      - targets: ["127.0.0.1:3090"]
 ```
 
-where ```localhost:3090``` is the host and port where ZEBRA is running.
+where `127.0.0.1:3090` is the host and port where ZEBRA API is running.
 
-**Reminder:** ZEBRA has to be [configured](#configure) to work with Prometheus.
+**Important:** The new TypeScript version uses `/metrics` as the endpoint (not `/prommetric`). The scrape interval should be greater than the app's internal scrape interval (100-120s recommended).
 
 ### Configuring Grafana 
 
 Grafana makes use of Prometheus to visualize ZEBRA metrics. Therefore, in order to use Grafana with ZEBRA you must have Prometheus installed and configured first.
 
-After installing and running Grafana, follow [this guide](https://grafana.com/docs/grafana/latest/datasources/add-a-data-source/) on how to add a Data Source. For the source, you want to use the Prometheus instance you sent up before this.
-
-**Note:** ZEBRA has to be [configured](#configure) to work with Grafana.
+After installing and running Grafana, follow [this guide](https://grafana.com/docs/grafana/latest/datasources/add-a-data-source/) on how to add a Data Source. For the source, you want to use the Prometheus instance you set up before this.
 
 ### Configuring MySQL
 
@@ -238,461 +279,337 @@ Save and close the file.
 
 For `my.cnf` (usually located at `/etc/my.cnf`), add the line `local_infile = 1` similar to Step 2. Save and close the file.
 
-**Reminder:** ZEBRA has to be [configured](#configuring-zebras-settings) to work with MySQL.
+**Reminder:** ZEBRA has to be configured to work with MySQL via `config/Zconfig.json`.
 
-# Installing ZEBRA
+---
 
-There are currently two ways that you can install ZEBRA: Manual or Docker. We recommend using Docker for the simplest and fastest experience. See below for more details.
+# Installing ZEBRA TypeScript
 
 ### Manual Installation
 
-1.  Make sure you have the required system specifications as described [here](#requirements).
-2.  (Optional) Install any desired [third party software](#third-party) you want to integrate with ZEBRA.
-3.  Clone this repository with Git.
+1. Make sure you have the required system specifications as described [here](#system-requirements).
 
-```
-git clone git@github.com:zowe/zebra.git
-```
-
-4.  Navigate to the ```src``` directory.
-
-```
-cd src
-```
-
-5.  Install the Node.js dependencies needed for ZEBRA to run.
-
-```
-npm install
-```
-
-6.  (Optional) If developing, we recommend downloading the npm package ```nodemon```.
-
-```
-npm install -g nodemon
-```
-
-7.  (Optional) Configure ZEBRA before running for the first time.
-  
-This step is not required since you can configure ZEBRA once it is running via the [Settings](#configure-settings) page. However, if you already know how you want to configure everything you can make a copy  ```Zconfig.template.json``` and name it ```Zconfig.json```. Then, you can change your preferences and configuration following the format described [here](#configure-zconfig). Once the application runs, your configuration will already be applied.
-
-8.  (Optional) Add SSL Certificate and Key to ```src/sslcert``` directory.
-
-This step is only required running ZEBRA on ```https```.
-   
-9.  Run ZEBRA.
-
-```
-node bin/www
-```
-
-For a development environment, you can use:
-```
-nodemon bin/www
-```
-
-If successful, you should see the following message:
-    
-```
-http server listening at port [PORT]
-```
-
-where PORT is the port number that ZEBRA is configured to run on.
-    
-### Docker Installation
-
-1.  Make sure you have Docker installed.
-2.  Clone this repository with Git.
-
-```
-git clone git@github.com:zowe/zebra.git
-```
-
-3.  (Optional) Configure ZEBRA before running for the first time.
-  
-This step is not required since you can configure ZEBRA once it is running via the [Settings](#configure-settings) page. However, if you already know how you want to configure everything you can make a copy  ```Zconfig.template.json``` and name it ```Zconfig.json```. Then, you can change your preferences and configuration following the format described [here](#configure-zconfig). Once the application runs, your configuration will already be applied.
-
-4.  (Optional) Add SSL Certificate and Key to ```src/sslcert``` directory.
-
-This step is only required running ZEBRA on ```https```.
-
-5.  Navigate to the ```src``` directory.
-
-```
-cd src
-```
-
-6. Use ```docker-compose``` to build the container network, and run ZEBRA.
-
-```
-docker-compose up --build
-```
-
-If successful, you should see the following message somewhere in the output:
-    
-```
-http server listening at port [PORT]
-```
-
-**NOTE:** If you are getting an error regarding port conflicts, you can edit the ```docker-compose.yml``` to change the configuration to work with open ports on you machine. It should look like:
-
-```
-version: '3'
-
-services:
-  zebra:
-    container_name: zebra
-    build: .
-    restart: always
-    ports:
-      - '[ZEBRA_PORT]:3090'
-    depends_on:
-      - mongo
-      - prometheus
-      - grafana
-  mongo:
-    container_name: zebra-mongo
-    image: mongo:5.0.3
-    ports:
-      - '[MONGO_PORT]:27017'
-    volumes:
-      - mongo-data:/data/db
-  prometheus:
-    container_name: zebra-prometheus
-    image: prom/prometheus:v2.30.3
-    ports:
-      - '[PROMETHEUS_PORT]:9090'
-    volumes:
-      - prometheus-data:/prometheus/data
-      - ./config/prometheus:/etc/prometheus
-  grafana:
-    container_name: zebra-grafana
-    image: grafana/grafana:8.2.2
-    ports:
-      - '[GRAFANA_PORT]:3000'
-    depends_on:
-      - prometheus
-    volumes:
-      - grafana-data:/var/lib/grafana
-      - ./config/grafana:/etc/grafana/provisioning/datasources
-
-volumes:
-  mongo-data:
-  prometheus-data:
-  grafana-data:
-```
-
-where ```[ZEBRA_PORT]```, ```[MONGO_PORT]```, ```[PROMETHEUS_PORT]```, and ```[GRAFANA_PORT]``` are your desired ports for ZEBRA, MongoDB, Prometheus, and Grafana, respectively.
-
-## Installing HMAI ZEBRA
-### About
-As a prerequisite to using the HMAI plugin, the Hitachi Vantara software products Mainframe Analytics Recorder (MAR) and Hitachi Mainframe Analytics Interpreter (HMAI) must be installed on a mainframe LPAR connected to an Hitachi Vantara mainframe array.
-
-HMAI converts MAR records in IBM z/OS® System Management Facilities (SMF) format to comma separated value (CSV) datasets. The CSV files contain key mainframe performance information for mainframe storage resources such as CLPR, MPB, Port, Parity Group, MPRank20 and LDEV.
-
-The ZEBRA HMAI plugin includes the components to automatically retrieve HMAI CSV files from a LPAR to the HMAI On Prem server using SFTP to input the CSV files into a MySQL database. Grafana connects to the MySQL database as a Data Source and provides visualization of HMAI data using predefined dashboards.
-
-For more information on MAR and HMAI, please view [Hitachi Mainframe Analytics Interpreter - FAQs | Hitachi Vantara](https://nam04.safelinks.protection.outlook.com/?url=https%3A%2F%2Fwww.hitachivantara.com%2Fen-us%2Finsights%2Ffaq%2Fmainframe-analytics-interpreter%23accordion-6f3155a424-item-73cd91adfa&data=05%7C02%7Ckrishi.jain%40hitachivantara.com%7C03b6a9d2a3564831473108dd04cd4ed8%7C18791e1761594f52a8d4de814ca8284a%7C0%7C0%7C638672002027867250%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=bSV%2B6J640%2Bwp0sJP026%2Btj1h7k%2FWRHJCOje0qaj6dc4%3D&reserved=0 "Original URL: https://www.hitachivantara.com/en-us/insights/faq/mainframe-analytics-interpreter#accordion-6f3155a424-item-73cd91adfa. Click or tap if you trust this link.")
-### Manual Installation
-1. Make sure you have the required system specifications as described.
-
-2. Install [MySQL](#configuring-mysql) and any desired [third party software](#built-in-third-party-support) you want to integrate with ZEBRA.
+2. (Optional) Install any desired [third party software](#built-in-third-party-support) you want to integrate with ZEBRA.
 
 3. Clone this repository with Git:
 
-   ```bash
-   git clone https://github.com/zowe/zebra.git
-   ```
+```bash
+git clone https://github.com/zowe/zebra.git
+cd zebra
+```
 
-4. Navigate to the `src` directory:
+4. Checkout the TypeScript branch:
 
-   ```bash
-   cd src
-   ```
+```bash
+git checkout zebraTypescript
+```
 
-5. Update the ZEBRA download with the `hmai-metrics` branch:
+5. Install pnpm if not already installed:
 
-   ```bash
-   git pull origin hmai-metrics
-   ```
+```bash
+npm install -g pnpm
+```
 
-6. Install the Node.js dependencies needed for ZEBRA to run:
+6. Install all dependencies:
 
-   ```bash
-   npm install
-   ```
+```bash
+pnpm install
+```
 
-7. (Optional) If developing, we recommend downloading the npm package `nodemon`:
+7. Configure ZEBRA before running (Required):
 
-   ```bash
-   npm install -g nodemon
-   ```
+Copy the template configuration file and edit it with your settings:
 
-8. (Optional) Configure ZEBRA before running for the first time.
+```bash
+cp config/Zconfig.template.json config/Zconfig.json
+```
 
-   This step is not required since you can configure ZEBRA once it is running via the [Settings](#settings-page) page. However, if you already know how you want to configure everything, you can make a copy of `Zconfig.template.json` and name it `Zconfig.json`. Then, you can change your preferences and configuration following the format described [here](#config-file). Once the application runs, your configuration will already be applied.
+Edit `config/Zconfig.json` with your DDS, MySQL, and other settings. See [Configuring ZEBRA's Settings](#configuring-zebras-settings) for details.
 
-9. (Optional) Add SSL Certificate and Key to `src/sslcert` directory.
+8. Build the shared package:
 
-   This step is only required when running ZEBRA on `https`.
+```bash
+pnpm build:shared
+```
+
+9. (Optional) Build the API and Web packages:
+
+```bash
+pnpm build
+```
 
 10. Run ZEBRA:
 
-    ```bash
-    node bin/www
-    ```
+```bash
+pnpm start
+```
 
-### Docker Installation
+If successful, you should see:
 
-1. Make sure you have Docker installed.
+```
+[API] INFO: Nest application successfully started
+[WEB] ✓ Ready in Xms
+```
 
-2. Clone this repository with Git:
+The application will be available at:
+- **API:** http://localhost:3090/api
+- **Web UI:** http://localhost:3000
+- **API Docs:** http://localhost:3090/api/docs
 
-   ```bash
-   git clone git@github.com:zowe/zebra.git
-   ```
-
-3. Ensure you're in the `hmai-metrics` branch by running:
-
-   ```bash
-   git pull origin hmai-metrics
-   ```
-
-4. (Optional) Configure ZEBRA before running for the first time.
-
-   This step is not required since you can configure ZEBRA once it is running via the [Settings](#settings-page) page. However, if you already know how you want to configure everything, you can edit `Zconfig.json` directly. Then, you can change your preferences and configuration following the format described in `LPAR1`. Once the application runs, your configuration will already be applied.
-
-5. (Optional) Add SSL Certificate and Key to `src/sslcert` directory.
-
-   This step is only required when running ZEBRA on `https`.
-
-6. Navigate to the `src` directory:
-
-   ```bash
-   cd src
-   ```
-
-7. Use `docker-compose` to build the container network and run ZEBRA:
-
-   ```bash
-   docker-compose up --build
-   ```
-
-8. If successful, you should see the following message somewhere in the output:
-
-   ```
-   http server listening at port [PORT]
-   ```
+---
 
 # Configuring ZEBRA's Settings
 
-You can configure ZEBRA in two ways: editing the ```Zconfig.json``` file directly, or making use of the Settings page interface once you get the application running.
+ZEBRA is configured via the `config/Zconfig.json` file. This file must exist before starting the application.
 
 ### Field Definitions
 
 ##### General Settings
 
-| Field                   | Definition                                                                                                                         | Required    |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| ```appurl```            | URL or hostname that ZEBRA is using                                                                                                | Always      |
-| ```appport```           | Port that ZEBRA is using                                                                                                           | Always      |
-| ```ppminutesInterval``` | The interval (in minutes) that RMF Postprocessor (RMF Monitor I) records are recorded into the DDS                                 | Always      |
-| ```rmf3interval```      | The interval (in seconds) that RMF Monitor III records are recorded into the DDS                                                   | Always      |
-| ```zebra_httptype```    | The http protocol that ZEBRA is using (```http``` or ```https```)                                                                  | Always      |
-| ```use_cert```          | Specifies whether to use TLS for servicing ZEBRA API (```true``` or ```false```)                                                   | Always      |
-| ```mongourl```          | URL or hostname of your instance of MongoDB                                                                                        | For MongoDB |
-| ```mongoport```         | Port of your instance of MongoDB                                                                                                   | For MongoDB |
-| ```dbinterval```        | The interval (in seconds) that data being recorded into MongoDB                                                                    | For MongoDB |
-| ```dbname```            | Name of the database to use in MongoDB                                                                                             | For MongoDB |
-| ```useDbAuth```         | Specifies whether to use authentication for MongoDB (```true``` or ```false```)                                                    | No          |
-| ```dbUser```            | Username for MongoDB if using authentication                                                                                       | No          |
-| ```dbPassword```        | Password for MongoDB if using authentication                                                                                       | No          |
-| ```authSource```        | Source of MongoDB's authentication (default is ```admin```)                                                                        | No          |
-| ```grafanaurl```        | URL or hostname of your instance of grafana                                                                                        | For Grafana |
-| ```grafanaport```       | Port of your instance of Grafana                                                                                                   | For Grafana |
-| ```grafanahttptype```   | The http protocol of your instance of Grafana                                                                                      | For Grafana |
-| ```dds```               | Contains DDS configurations of one or more LPARs. See [below](#configure-dds) to see how to configure this specific field. | Always      |
+| Field                   | Definition                                                                                 | Required    |
+| ----------------------- | ------------------------------------------------------------------------------------------ | ----------- |
+| `appurl`                | URL or hostname that ZEBRA is using                                                        | Always      |
+| `appport`               | Port that the ZEBRA API is using (default: 3090)                                           | Always      |
+| `webport`               | Port that the ZEBRA Web UI is using (default: 3000)                                        | Always      |
+| `ppminutesInterval`     | The interval (in minutes) that RMF Postprocessor records are recorded into the DDS         | Always      |
+| `rmf3interval`          | The interval (in seconds) that RMF Monitor III records are recorded into the DDS           | Always      |
+| `zebra_httptype`        | The http protocol that ZEBRA is using (`http` or `https`)                                 | Always      |
+| `use_cert`              | Specifies whether to use TLS for servicing ZEBRA API (`true` or `false`)                  | Always      |
+| `mongourl`              | URL or hostname of your instance of MongoDB                                                | For MongoDB |
+| `mongoport`             | Port of your instance of MongoDB                                                           | For MongoDB |
+| `dbinterval`            | The interval (in seconds) that data is recorded into MongoDB                               | For MongoDB |
+| `dbname`                | Name of the database to use in MongoDB                                                     | For MongoDB |
+| `useDbAuth`             | Specifies whether to use authentication for MongoDB (`true` or `false`)                    | No          |
+| `dbUser`                | Username for MongoDB if using authentication                                               | No          |
+| `dbPassword`            | Password for MongoDB if using authentication                                               | No          |
+| `authSource`            | Source of MongoDB's authentication (default is `admin`)                                    | No          |
+| `grafanaurl`            | URL or hostname of your instance of Grafana                                                | For Grafana |
+| `grafanaport`           | Port of your instance of Grafana                                                           | For Grafana |
+| `grafanahttptype`       | The http protocol of your instance of Grafana                                              | For Grafana |
+| `dds`                   | Contains DDS configurations of one or more LPARs (see [below](#dds-settings))             | Always      |
 
 ##### DDS Settings
 
-Each key in the ```dds``` field represents the name of the LPAR you are configuring. For example, if your LPAR is called ```SLSU```, your DDS config may look like:
+Each key in the `dds` field represents the name of the LPAR you are configuring. For example, if your LPAR is called `DV01`, your DDS config may look like:
 
-```
-"SLSU": {
-   "ddshhttptype":"https",
-   "ddsbaseurl":"salisu.com",
-   "ddsbaseport":"8803",
-   "ddsauth":"true",
-   "ddsuser":"user",
-   "ddspwd":"pass",
-   "rmf3filename":"rmfm3.xml",
-   "rmfppfilename":"rmfpp.xml",
-   "mvsResource":",SLSU,MVS_IMAGE",
-   "PCI": 3340,
-   "usePrometheus":"true",
-   "useMongo": "false"
+```json
+"DV01": {
+  "ddshhttptype": "https",
+  "ddsbaseurl": "mainframe.example.com",
+  "ddsbaseport": "8803",
+  "ddsauth": "true",
+  "ddsuser": "user",
+  "ddspwd": "pass",
+  "rmf3filename": "rmfm3.xml",
+  "rmfppfilename": "rmfpp.xml",
+  "mvsResource": ",DV01,MVS_IMAGE",
+  "PCI": 3340,
+  "usePrometheus": "true",
+  "useMongo": "false"
 }
 ```
 
-| Field               | Definition                                                                                                                                      | Required       |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
-| ```ddshhttptype```  | The http protocal that this DDS service is using (```http``` or ```https```)                                                                    | Always         |
-| ```ddsbaseurl```    | URL or host name of this DDS service                                                                                                            | Always         |
-| ```ddsbaseport```   | Port of this DDS service                                                                                                                        | Always         |
-| ```ddsauth```       | Specifies whether this DDS service uses authentication (```true``` or ```false```)                                                              | No             |
-| ```ddsuser```       | Username to access this DDS (if ```ddsauth``` is ```true```)                                                                                    | No             |
-| ```ddspwd```        | Password to access this DDS (if ```ddsauth``` is ```true```)                                                                                    | No             |
-| ```rmf3filename```  | File name and extension used when DDS RMF service sends RMF Monitor III records to its Web API (default value is ```rmfm3.xml```)               | Always         |
-| ```rmfppfilename``` | File name and extension used when DDS RMF service sends RMF Monitor I (Postprocessor) records to its Web API (default value is ```rmfpp.xml```) | Always         |
-| ```mvsResource```   | The default resource to query when making requests to this DDS                                                                                  | Always         |
-| ```PCI```           | The PCI value of the mainframe                                                                                                                  | Always         |
-| ```usePrometheus``` | Specifies whether this DDS service should make use of Prometheus data  scraping (```true``` or ```false```)                                     | For Prometheus |
-| ```useMongo```      | Specifies whether this DDS service should store RMF III records in a MongoDB database (```true``` or ```false```)                               | For MongoDB    |
+| Field              | Definition                                                                                                      | Required       |
+| ------------------ | --------------------------------------------------------------------------------------------------------------- | -------------- |
+| `ddshhttptype`     | The http protocol that this DDS service is using (`http` or `https`)                                           | Always         |
+| `ddsbaseurl`       | URL or host name of this DDS service                                                                            | Always         |
+| `ddsbaseport`      | Port of this DDS service                                                                                        | Always         |
+| `ddsauth`          | Specifies whether this DDS service uses authentication (`true` or `false`)                                      | No             |
+| `ddsuser`          | Username to access this DDS (if `ddsauth` is `true`)                                                            | No             |
+| `ddspwd`           | Password to access this DDS (if `ddsauth` is `true`)                                                            | No             |
+| `rmf3filename`     | File name used when DDS sends RMF Monitor III records (default: `rmfm3.xml`)                                    | Always         |
+| `rmfppfilename`    | File name used when DDS sends RMF Postprocessor records (default: `rmfpp.xml`)                                  | Always         |
+| `mvsResource`      | The default resource to query when making requests to this DDS                                                  | Always         |
+| `PCI`              | The PCI value of the mainframe                                                                                  | Always         |
+| `usePrometheus`    | Specifies whether this DDS should be scraped for Prometheus metrics (`true` or `false`)                         | For Prometheus |
+| `useMongo`         | Specifies whether this DDS should store RMF III records in MongoDB (`true` or `false`)                          | For MongoDB    |
+| `hmai`             | HMAI configuration for this LPAR (see [below](#hmai-settings))                                                  | For HMAI       |
 
-### Config File
+##### HMAI Settings
 
-The ```Zconfig.json``` file should be located in the ```src/config``` directory. In this directory, there is a ```Zconfig.template.json``` which is an example of what yours could look like:
+HMAI configuration is nested under each LPAR in the `dds` section:
 
+```json
+"DV01": {
+  "ddshhttptype": "https",
+  "ddsbaseurl": "mainframe.example.com",
+  "ddsbaseport": "8803",
+  // ... other DDS settings ...
+  "hmai": {
+    "ftp": {
+      "host": "mainframe.example.com",
+      "port": 21,
+      "user": "ftpuser",
+      "password": "ftppass",
+      "directory": "/hmai/csv/files"
+    },
+    "mysql": {
+      "host": "localhost",
+      "port": 3306,
+      "user": "zebrauser",
+      "password": "zebrapass",
+      "database": "zebra_hmai"
+    },
+    "checkInterval": 300,
+    "defaultStartDate": "2024-01-01",
+    "continuousMonitoring": true,
+    "dataRetention": 90
+  }
+}
 ```
+
+| Field                  | Definition                                                                       | Required  |
+| ---------------------- | -------------------------------------------------------------------------------- | --------- |
+| `ftp.host`             | FTP server hostname (usually same as DDS host)                                   | For HMAI  |
+| `ftp.port`             | FTP server port (default: 21)                                                    | For HMAI  |
+| `ftp.user`             | FTP username                                                                     | For HMAI  |
+| `ftp.password`         | FTP password                                                                     | For HMAI  |
+| `ftp.directory`        | Directory path where HMAI CSV files are located                                  | For HMAI  |
+| `mysql.host`           | MySQL server hostname                                                            | For HMAI  |
+| `mysql.port`           | MySQL server port (default: 3306)                                                | For HMAI  |
+| `mysql.user`           | MySQL username                                                                   | For HMAI  |
+| `mysql.password`       | MySQL password                                                                   | For HMAI  |
+| `mysql.database`       | MySQL database name for HMAI data                                                | For HMAI  |
+| `checkInterval`        | Interval in seconds to check for new HMAI files (0 to disable periodic checks)   | No        |
+| `defaultStartDate`     | Default start date for HMAI ingestion (YYYY-MM-DD)                               | No        |
+| `continuousMonitoring` | Enable continuous monitoring of FTP directory (`true` or `false`)                | No        |
+| `dataRetention`        | Number of days to retain HMAI data (0 for unlimited)                             | No        |
+
+### Config File Location
+
+The configuration file is located at: **`config/Zconfig.json`**
+
+A template is provided at: **`config/Zconfig.template.json`**
+
+### Example Configuration
+
+Here's a complete example `Zconfig.json`:
+
+```json
 {
-    "mongourl":"localhost",
-    "dbinterval":"100",
-    "dbname":"zebraDB",
-    "appurl":"localhost",
-    "appport":"3090",
-    "mongoport":"27017",
-    "ppminutesInterval":"30",
-    "rmf3interval":"100",
-    "zebra_httptype":"https",
-    "useDbAuth":"true",
-    "dbUser":"user",
-    "dbPassword":"pass",
-    "authSource":"admin",
-    "useMongo":"true",
-    "use_cert": "false",
-    "grafanaurl":"localhost",
-    "grafanaport":"9000",
-    "grafanahttptype": "http",
-    "dds": {
-        "SLSU": {
-            "ddshhttptype":"https",
-            "ddsbaseurl":"salisu.com",
-            "ddsbaseport":"8803",
-            "ddsauth":"true",
-            "ddsuser":"user",
-            "ddspwd":"pass",
-            "rmf3filename":"rmfm3.xml",
-            "rmfppfilename":"rmfpp.xml",
-            "mvsResource":",SLSU,MVS_IMAGE",
-            "PCI": 3340,
-            "usePrometheus":"true",
-            "useMongo": "false"
+  "mongourl": "localhost",
+  "dbinterval": "100",
+  "dbname": "zebraDB",
+  "appurl": "localhost",
+  "appport": "3090",
+  "webport": "3000",
+  "mongoport": "27017",
+  "ppminutesInterval": "30",
+  "rmf3interval": "100",
+  "zebra_httptype": "http",
+  "useDbAuth": "false",
+  "dbUser": "",
+  "dbPassword": "",
+  "authSource": "admin",
+  "useMongo": "false",
+  "use_cert": "false",
+  "grafanaurl": "localhost",
+  "grafanaport": "3000",
+  "grafanahttptype": "http",
+  "dds": {
+    "DV01": {
+      "ddshhttptype": "https",
+      "ddsbaseurl": "mainframe.example.com",
+      "ddsbaseport": "8803",
+      "ddsauth": "true",
+      "ddsuser": "user",
+      "ddspwd": "pass",
+      "rmf3filename": "rmfm3.xml",
+      "rmfppfilename": "rmfpp.xml",
+      "mvsResource": ",DV01,MVS_IMAGE",
+      "PCI": 3340,
+      "usePrometheus": "true",
+      "useMongo": "false",
+      "hmai": {
+        "ftp": {
+          "host": "mainframe.example.com",
+          "port": 21,
+          "user": "ftpuser",
+          "password": "ftppass",
+          "directory": "/hmai/csv"
         },
-        "JSTN": {
-            "ddshhttptype":"http",
-            "ddsbaseurl":"justin.com",
-            "ddsbaseport":"8803",
-            "ddsauth":"true",
-            "ddsuser":"user",
-            "ddspwd":"pass",
-            "rmf3filename":"rmfm3.xml",
-            "rmfppfilename":"rmfpp.xml",
-            "mvsResource":",JSTN,MVS_IMAGE",
-            "PCI": 3340,
-            "usePrometheus":"false",
-            "useMongo": "true"
-        }
+        "mysql": {
+          "host": "localhost",
+          "port": 3306,
+          "user": "zebrauser",
+          "password": "zebrapass",
+          "database": "zebra_hmai"
+        },
+        "checkInterval": 300,
+        "defaultStartDate": "2024-01-01",
+        "continuousMonitoring": true,
+        "dataRetention": 90
+      }
     }
+  }
 }
 ```
 
-You can edit this file directly with your specifications. **NOTE:** Once you save the changes, a restart of ZEBRA is required. 
+**Note:** After editing `config/Zconfig.json`, restart the application for changes to take effect.
 
-### Settings Page
+---
 
-As an alternative to editing the ```Zconfig.json``` file directly, you could make use of the Settings page in a browser once the application is up and running. You can find the page using the Navbar in the browser: 
+# Starting ZEBRA
 
-Config > Settings
+Once configured, start ZEBRA with:
 
-Alternatively, you can go to the page directly using the link ```http://localhost:3090/config/settings``` where you ```localhost``` is your ZEBRA hostname and ```3090``` is your ZEBRA port.
+```bash
+pnpm start
+```
 
-On this page, you can input and edit the same configuration fields as described previously for both [General Settings](#configure-general) and [DDS Settings](#configure-dds).
+This will start both the API server and the Web UI in development mode.
 
-**NOTE:** If you make configuration changes through this method, a restart of ZEBRA is **not required**.
+**For production:**
+
+```bash
+pnpm build
+pnpm start:prod
+```
+
+**Environment Variables:**
+
+You can override certain settings with environment variables:
+
+```bash
+# Disable authentication (for testing)
+DISABLE_AUTH=true pnpm start
+
+# Disable Redis/HMAI features
+DISABLE_REDIS=true pnpm start
+
+# Custom config path
+CONFIG_PATH=/custom/path/Zconfig.json pnpm start
+
+# Custom port
+PORT=4000 pnpm start
+```
+
+**Accessing ZEBRA:**
+
+- **Web UI:** http://localhost:3000
+- **API:** http://localhost:3090/api/v2
+- **API Documentation (Swagger):** http://localhost:3090/api/docs
+- **Prometheus Metrics:** http://localhost:3090/metrics
 
 ---
 
 # ZEBRA API
 
-Here, you will find documentation on ZEBRA's API and how to make the most out of each query. A full interactive Swagger doc of the API can also be found in the ```/apis``` route of the application.
+The new TypeScript API uses versioning (currently v2) and follows RESTful conventions.
 
-### RMF Postprocessor (Monitor I) Reports
+### API Documentation
 
-RMF Postprocessor reports offer historical records. These reports' intervals are longer than that of RMF Monitor III, and previous records are stored for a set amount of time (usually around 2 weeks).
+Full interactive Swagger/OpenAPI documentation is available at:
 
-##### List of Supported Postprocessor Reports
-
-These report types are confirmed to be parsable by ZEBRA. There may be some report types not listed here that still work correctly, however. If you find a working report that is not listed, please reach out and we will add it below. 
-
-Each report links to its official IBM&copy; documentation.
-
-| Report                                                                                                   | Description                               |
-| -------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| [CACHE](https://www.ibm.com/docs/en/zos/2.4.0?topic=postprocessor-cache-cache-subsystem-activity-report) | Cache Subsystem Activity                  |
-| [CF](https://www.ibm.com/docs/en/SSLTBW_2.4.0/com.ibm.zos.v2r4.erbb500/erbb500382.htm)                   | Coupling Facility Activity                |
-| [CHAN](https://www.ibm.com/docs/en/SSLTBW_2.4.0/com.ibm.zos.v2r4.erbb500/chan.htm)                       | Channel Path Activity                     |
-| [CPU](https://www.ibm.com/docs/en/SSLTBW_2.4.0/com.ibm.zos.v2r4.erbb500/cpu.htm)                         | Channel Path Activity                     |
-| [CRYPTO](https://www.ibm.com/docs/en/SSLTBW_2.4.0/com.ibm.zos.v2r4.erbb500/crypto.htm)                   | Crypto Hardware Activity                  |
-| [DEVICE](https://www.ibm.com/docs/en/SSLTBW_2.4.0/com.ibm.zos.v2r4.erbb500/device.htm)                   | Device Activity                           |
-| [EADM](https://www.ibm.com/docs/en/SSLTBW_2.4.0/com.ibm.zos.v2r4.erbb500/pp-eadm.htm)                    | Extended Asynchronous Data Mover Activity |
-| [HFS](https://www.ibm.com/docs/en/SSLTBW_2.4.0/com.ibm.zos.v2r4.erbb500/hfspp.htm)                       | Hierarchical File System Statistics       |
-| [IOQ](https://www.ibm.com/docs/en/SSLTBW_2.4.0/com.ibm.zos.v2r4.erbb500/ioq.htm)                         | I/O Queuing Activity                      |
-| [OMVS](https://www.ibm.com/docs/en/SSLTBW_2.4.0/com.ibm.zos.v2r4.erbb500/omvs.htm)                       | OMVS Kernal Activity                      |
-| [PAGESP](https://www.ibm.com/docs/en/SSLTBW_2.4.0/com.ibm.zos.v2r4.erbb500/pagesp.htm)                   | Page Data Set Activity                    |
-| [PAGING](https://www.ibm.com/docs/en/SSLTBW_2.4.0/com.ibm.zos.v2r4.erbb500/paging.htm)                   | Paging Activity                           |
-| [SDELAY](https://www.ibm.com/docs/en/SSLTBW_2.4.0/com.ibm.zos.v2r4.erbb500/sdelay.htm)                   | Serialization Delay                       |
-| [VSTOR](https://www.ibm.com/docs/en/SSLTBW_2.4.0/com.ibm.zos.v2r4.erbb500/vstor.htm)                     | Virtual Storage Activity                  |
-| [WLMGL](https://www.ibm.com/docs/en/SSLTBW_2.4.0/com.ibm.zos.v2r4.erbb500/wrkldac.htm)                   | Workload Activity                         |
-| [XCF](https://www.ibm.com/docs/en/SSLTBW_2.4.0/com.ibm.zos.v2r4.erbb500/xcf1.htm)                        | Cross-System Coupling Facility Activity   |
-
-Additionally, when querying these reports with ZEBRA, you can append special parameters to the report as you would in the DDS. For example, instead of just using ```WLMGL```, you could use ```WLMGL(SCPER, RCLASS)``` to breakdown the service classes by period and include report classes.
-
-##### Request Format
-
-To get a Postprocessor report in ZEBRA format, make a ```GET``` request to the route ```/v1/{lpar}/rmfpp/{report}```.
-
-The route has the following parameters:
-
-| Parameter    | Description                                                                          |
-| ------------ | ------------------------------------------------------------------------------------ |
-| ```lpar```   | Name of the reporting LPAR                                                           |
-| ```report``` | RMF Postprocessor report type (see [list](#list-of-supported-postprocessor-reports)) |
-
-You can add additional query strings to the request for more options:
-
-| Option      | Description                                                                                                                                                |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ```start``` | Specifies the start date for the report's interval (If missing, defaults to current date). **NOTE:** If ```start``` is defined, ```end``` must be as well. |
-| ```end```   | Specifies the end date for the report's interval (If missing, defaults to current date). **NOTE:** If ```end``` is defined, ```start``` must be as well.   |
-
-##### Examples
-
-The following examples use the ZEBRA demo found at <https://zebra.talktothemainframe.com:3390/>.
-
-| Request                                                                                        | Description                                                             |
-| ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| <https://zebra.talktothemainframe.com:3390/v1/RPRT/rmfpp/CPU>                                  | Gets the list of CPU Activity reports for the current date so far.      |
-| <https://zebra.talktothemainframe.com:3390/v1/RPRT/rmfpp/CHAN?start=2021-11-09&end=2021-11-11> | Gets the list of Channel Path Activity reports from November 9, 2021 to November 11, 2021. **NOTE:** These dates are most likely outdated since Postprocessor reports only go back a limited amounted of time. Try changing the dates to those within the last week.  |
-| <https://zebra.talktothemainframe.com:3390/v1/RPRT/rmfpp/WLMGL>                                | Gets the list of Workload Activity reports for the current date so far. |
-| <https://zebra.talktothemainframe.com:3390/v1/RPRT/rmfpp/WLMGL(SCPER,RCLASS)>                  | Adds additional parameters to the previously listed request. The ```SCPER``` parameter breaks down service classes to periods and the ```RCLASS``` adds report classes to the report.                                                                                    |
+**http://localhost:3090/api/docs**
 
 ### RMF Monitor III Reports
 
-RMF Monitor III reports offer near realtime records. These reports' intervals are much shorter than that of RMF Postprocessor. With Monitor III, you can only query the current Monitor III data, unlike Postprocessor records that are stored for some time after they are generated. To store Monitor III records, we recommend using the MongoDB integration.
+RMF Monitor III reports offer near realtime records. These reports' intervals are much shorter than that of RMF Postprocessor.
 
 ##### List of Supported Monitor III reports
 
-These report types are confirmed to be parsable by ZEBRA. There may be some report types not listed here that still work correctly, however. If you find a working report that is not listed, please reach out and we will add it below. 
+These report types are confirmed to be parsable by ZEBRA.
 
 Each report links to its official IBM&copy; documentation.
 
@@ -721,279 +638,241 @@ Each report links to its official IBM&copy; documentation.
 
 ##### Request Format
 
-To get a Monitor III report in ZEBRA format, make a ```GET``` request to the route ```/v1/{lpar}/rmfm3/{report}```.
+To get a Monitor III report in ZEBRA format, make a `GET` request to:
 
-The route has the following parameters:
+```
+GET /api/v2/rmf3/{lpar}/{report}
+```
 
-| Parameter    | Description                                                                          |
-| ------------ | ------------------------------------------------------------------------------------ |
-| ```lpar```   | Name of the reporting LPAR                                                           |
-| ```report``` | RMF Monitor III report type (see [list](#list-of-supported-monitor-iii-reports))     |
+Parameters:
 
-You can add additional query strings to the request for more options:
+| Parameter    | Description                                                                      |
+| ------------ | -------------------------------------------------------------------------------- |
+| `lpar`       | Name of the reporting LPAR                                                       |
+| `report`     | RMF Monitor III report type (see [list](#list-of-supported-monitor-iii-reports)) |
 
-| Option         | Description                                                                                                |
-| -----------    | ---------------------------------------------------------------------------------------------------------- |
-| ```resource``` | Specifies the resource to query for the reports (default is ```mvsResource``` defined in general settings) |
+Query Options:
 
+| Option       | Description                                                                                |
+| ------------ | ------------------------------------------------------------------------------------------ |
+| `resource`   | Specifies the resource to query for the reports (default is `mvsResource` from config)     |
 
 ##### Examples
 
-The following examples use the ZEBRA demo found at <https://zebra.talktothemainframe.com:3390/>.
+| Request                                                            | Description                                                                          |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| `GET /api/v2/rmf3/DV01/CPC`                                        | Gets the most recent CPC Capacity report for DV01                                    |
+| `GET /api/v2/rmf3/DV01/SYSINFO`                                    | Gets the most recent System Information report                                       |
+| `GET /api/v2/rmf3/DV01/SYSSUM?resource=,VIPLEX,SYSPLEX`           | Gets the most recent Sysplex Summary from the `,VIPLEX,SYSPLEX` resource            |
 
-| Request                                                                                  | Description                                                                          |
-| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| <https://zebra.talktothemainframe.com:3390/v1/RPRT/rmf3/CPC>                             | Gets the most recent CPC Capacity report.                                            |
-| <https://zebra.talktothemainframe.com:3390/v1/RPRT/rmf3/SYSINFO>                         | Gets the most recent System Information report.                                      |
-| <https://zebra.talktothemainframe.com:3390/v1/RPRT/rmf3/SYSSUM?resource=,VIPLEX,SYSPLEX> | Gets the most recent Sysplex Summary report from the ```,VIPLEX,SYSPLEX``` resource. |
+**Response Format:**
 
-### Individual RMF Metrics
+```json
+{
+  "title": "CPC CAPACITY",
+  "timestart": "2024-01-15 10:30:00",
+  "timeend": "2024-01-15 10:31:00",
+  "columnhead": ["Partition", "Type", "Weight", "..."],
+  "table": [
+    {"Partition": "DV01", "Type": "LPAR", "Weight": "100", "...": "..."},
+    {"Partition": "QA01", "Type": "LPAR", "Weight": "50", "...": "..."}
+  ],
+  "caption": {
+    "System": "DV01",
+    "Date": "2024-01-15",
+    "Time": "10:30:00"
+  },
+  "metadata": {
+    "fetchedAt": "2024-01-15T10:31:00.000Z",
+    "lpar": "DV01",
+    "report": "CPC"
+  }
+}
+```
 
-ZEBRA can also individually retrieve and parse certain RMF metrics defined by the DDS.
+### RMF Postprocessor (Monitor I) Reports
 
-##### List of Supported RMF Metrics
+RMF Postprocessor reports offer historical records with longer intervals than RMF Monitor III.
 
-To see a list of what metrics are available in your system, use the ```/v1/{lpar}/rmf?id=LIST``` API route (where ```lpar``` is the reporting LPAR). You can also include a ```resource``` query option to see the metrics for different resources (default is ```mvsResource``` defined in configuration).
+##### List of Supported Postprocessor Reports
+
+These report types are confirmed to be parsable by ZEBRA.
+
+Each report links to its official IBM&copy; documentation.
+
+| Report                                                                                                   | Description                               |
+| -------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| [CACHE](https://www.ibm.com/docs/en/zos/2.4.0?topic=postprocessor-cache-cache-subsystem-activity-report) | Cache Subsystem Activity                  |
+| [CF](https://www.ibm.com/docs/en/SSLTBW_2.4.0/com.ibm.zos.v2r4.erbb500/erbb500382.htm)                   | Coupling Facility Activity                |
+| [CHAN](https://www.ibm.com/docs/en/SSLTBW_2.4.0/com.ibm.zos.v2r4.erbb500/chan.htm)                       | Channel Path Activity                     |
+| [CPU](https://www.ibm.com/docs/en/SSLTBW_2.4.0/com.ibm.zos.v2r4.erbb500/cpu.htm)                         | CPU Activity                              |
+| [CRYPTO](https://www.ibm.com/docs/en/SSLTBW_2.4.0/com.ibm.zos.v2r4.erbb500/crypto.htm)                   | Crypto Hardware Activity                  |
+| [DEVICE](https://www.ibm.com/docs/en/SSLTBW_2.4.0/com.ibm.zos.v2r4.erbb500/device.htm)                   | Device Activity                           |
+| [EADM](https://www.ibm.com/docs/en/SSLTBW_2.4.0/com.ibm.zos.v2r4.erbb500/pp-eadm.htm)                    | Extended Asynchronous Data Mover Activity |
+| [HFS](https://www.ibm.com/docs/en/SSLTBW_2.4.0/com.ibm.zos.v2r4.erbb500/hfspp.htm)                       | Hierarchical File System Statistics       |
+| [IOQ](https://www.ibm.com/docs/en/SSLTBW_2.4.0/com.ibm.zos.v2r4.erbb500/ioq.htm)                         | I/O Queuing Activity                      |
+| [OMVS](https://www.ibm.com/docs/en/SSLTBW_2.4.0/com.ibm.zos.v2r4.erbb500/omvs.htm)                       | OMVS Kernel Activity                      |
+| [PAGESP](https://www.ibm.com/docs/en/SSLTBW_2.4.0/com.ibm.zos.v2r4.erbb500/pagesp.htm)                   | Page Data Set Activity                    |
+| [PAGING](https://www.ibm.com/docs/en/SSLTBW_2.4.0/com.ibm.zos.v2r4.erbb500/paging.htm)                   | Paging Activity                           |
+| [SDELAY](https://www.ibm.com/docs/en/SSLTBW_2.4.0/com.ibm.zos.v2r4.erbb500/sdelay.htm)                   | Serialization Delay                       |
+| [VSTOR](https://www.ibm.com/docs/en/SSLTBW_2.4.0/com.ibm.zos.v2r4.erbb500/vstor.htm)                     | Virtual Storage Activity                  |
+| [WLMGL](https://www.ibm.com/docs/en/SSLTBW_2.4.0/com.ibm.zos.v2r4.erbb500/wrkldac.htm)                   | Workload Activity                         |
+| [XCF](https://www.ibm.com/docs/en/SSLTBW_2.4.0/com.ibm.zos.v2r4.erbb500/xcf1.htm)                        | Cross-System Coupling Facility Activity   |
+
+Additionally, you can append special parameters to the report as you would in the DDS. For example: `WLMGL(SCPER,RCLASS)` to breakdown the service classes by period and include report classes.
 
 ##### Request Format
 
-To get an individual RMF metric from ZEBRA, make a ```GET``` request to the route ```/v1/{lpar}/rmf?id={metricId}```.
+To get a Postprocessor report in ZEBRA format, make a `GET` request to:
 
-The route has the following parameters:
+```
+GET /api/v2/rmfpp/{lpar}/{report}
+```
 
-| Parameter      | Description                                                                                                                  |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| ```lpar```     | Name of the reporting LPAR                                                                                                   |
-| ```metricId``` | ID of the RMF metric (the list of available metric IDs and descriptions can be found [here](#list-of-supported-dds-metrics)) |
+Parameters:
 
-You can add additional query strings to the request for more options:
+| Parameter    | Description                                                                          |
+| ------------ | ------------------------------------------------------------------------------------ |
+| `lpar`       | Name of the reporting LPAR                                                           |
+| `report`     | RMF Postprocessor report type (see [list](#list-of-supported-postprocessor-reports)) |
 
-| Option         | Description                                   |
-| -------------- | --------------------------------------------- |
-| ```resource``` | Specifies the resource to get the metric from |
+Query Options:
+
+| Option      | Description                                                                                                                                                |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `startDate` | Start date for the report's interval (YYYY-MM-DD). If missing, defaults to current date. **Note:** If `startDate` is defined, `endDate` must be as well. |
+| `endDate`   | End date for the report's interval (YYYY-MM-DD). If missing, defaults to current date. **Note:** If `endDate` is defined, `startDate` must be as well.   |
 
 ##### Examples
 
-The following examples use the ZEBRA demo found at <https://zebra.talktothemainframe.com:3390/>.
+| Request                                                                        | Description                                                             |
+| ------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| `GET /api/v2/rmfpp/DV01/CPU`                                                   | Gets the CPU Activity reports for the current date                      |
+| `GET /api/v2/rmfpp/DV01/CHAN?startDate=2024-01-09&endDate=2024-01-11`         | Gets Channel Path Activity reports from January 9-11, 2024              |
+| `GET /api/v2/rmfpp/DV01/WLMGL`                                                 | Gets Workload Activity reports for the current date                     |
+| `GET /api/v2/rmfpp/DV01/WLMGL(SCPER,RCLASS)`                                   | Gets Workload Activity with service class periods and report classes    |
 
-| Request                                                                                    | Description                                                                                      |
-| ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
-| <https://zebra.talktothemainframe.com:3390/v1/RPRT/rmf?id=LIST>                            | Lists the RMF metric IDs and their description in the default resource.                          |
-| <https://zebra.talktothemainframe.com:3390/v1/RPRT/rmf?id=LIST&resource=,VIPLEX,SYSPLEX>   | Lists the RMF metric IDs and their description in the ```,VIPLEX,SYSPLEX``` resource.            |
-| <https://zebra.talktothemainframe.com:3390/v1/RPRT/rmf?id=8D0160>                          | Gets most recent value for '% delay' (ID: ```8D0160```) from the default resource.               |
-| <https://zebra.talktothemainframe.com:3390/v1/RPRT/rmf?id=8D0160&resource=,VIPLEX,SYSPLEX> | Gets most recent value for '% delay' (ID: ```8D0160```) from the ```,VIPLEX,SYSPLEX``` resource. |
+### HMAI Ingestion API
+
+HMAI (Hitachi Mainframe Analytics Interpreter) ingestion is controlled via REST API endpoints.
+
+**Requirements:** Redis must be installed and running for HMAI features to work.
+
+##### Available Endpoints
+
+**Start Ingestion:**
+```
+POST /api/v2/hmai/{lpar}/ingestion/start
+Body: {
+  "metrics": ["clpr", "ldev", "mpb"],
+  "startDate": "2024-01-01",
+  "endDate": "2024-01-31",
+  "continuousMonitoring": false
+}
+```
+
+**Stop Ingestion:**
+```
+POST /api/v2/hmai/{lpar}/ingestion/stop
+```
+
+**Get Ingestion Status:**
+```
+GET /api/v2/hmai/{lpar}/ingestion/status
+```
+
+**Clear Database:**
+```
+POST /api/v2/hmai/{lpar}/clear-database
+```
+
+**Start All LPARs:**
+```
+POST /api/v2/hmai/ingestion/start-all
+```
+
+**Get Running Processes:**
+```
+GET /api/v2/hmai/running-processes
+```
+
+**Check Processed Data:**
+```
+POST /api/v2/hmai/{lpar}/check-processed
+Body: {
+  "startDate": "2024-01-01",
+  "endDate": "2024-01-31",
+  "metrics": ["clpr", "ldev"]
+}
+```
+
+**Available Metrics:**
+- `clpr` - Cache Logical Partition Resource
+- `ldev` - Logical Device
+- `mpb` - Microprocessor Board
+- `mprank20` - Microprocessor Rank (Top 20)
+- `pgrp` - Parity Group
+- `port` - Port Statistics
+
+**Web UI:** Access the HMAI interface at http://localhost:3000/hmai
 
 ### Exposing RMF Data to Prometheus
 
-ZEBRA comes built with an API and framework that allows for the creation of realtime Prometheus metrics, with RMF Monitor III. When the application is run for the first time, a ```metrics.json``` file is created in the ```src``` directory. This is where ZEBRA will store the custom Prometheus metrics that you define. While you can edit this file directly with your metric configuration, it is recommended to use the API. For complete documentation on the API, check out the Swagger page on the ```/apis``` route.
+ZEBRA provides automatic Prometheus metrics scraping for RMF Monitor III data.
 
-##### Custom Metric Format
+##### Metrics Endpoint
 
-Before getting into the API calls, it is important to understand how ZEBRA formats these custom metrics. In the ```src``` directory, there is a ```metrics.template.json``` that serves as an example of what the metrics should look like:
+Prometheus should scrape:
 
 ```
+GET /metrics
+```
+
+This endpoint returns metrics in Prometheus format based on the configuration in `config/metrics.json`.
+
+##### Configuring Metrics
+
+The `config/metrics.json` file defines which RMF metrics to expose to Prometheus:
+
+```json
 {
-    "RPRT_QCK2_PTOU": {
-        "lpar": "RPRT",
-        "request": {
-            "report": "CPC",
-            "resource": ",RPRT,MVS_IMAGE"
-        },
-        "identifiers": [
-            {
-                "key": "CPCPPNAM",
-                "value": "QCK2"
-            }
-        ],
-        "field": "CPCPPTOU",
-        "desc": "Physical total utilization for the QCK2 partition."
+  "DV01_CPC_PHYSICAL_TOTAL": {
+    "lpar": "DV01",
+    "request": {
+      "report": "CPC",
+      "resource": ",DV01,MVS_IMAGE"
     },
-    "RPRT_TRNG_PTOU": {
-        "lpar": "RPRT",
-        "request": {
-            "report": "CPC",
-            "resource": ",RPRT,MVS_IMAGE"
-        },
-        "identifiers": [
-            {
-                "key": "CPCPPNAM",
-                "value": "TRNG"
-            }
-        ],
-        "field": "CPCPPTOU",
-        "desc": "Physical total utilization for the TRNG partition."
-    },
-    "RPRT_VIDVLP_PTOU": {
-        "lpar": "RPRT",
-        "request": {
-            "report": "CPC",
-            "resource": ",RPRT,MVS_IMAGE"
-        },
-        "identifiers": [
-            {
-                "key": "CPCPPNAM",
-                "value": "VIDVLP"
-            }
-        ],
-        "field": "CPCPPTOU",
-        "desc": "Physical total utilization for the VIDVLP partition."
-    },
-    "RPRT_VIRPT_PTOU": {
-        "lpar": "RPRT",
-        "request": {
-            "report": "CPC",
-            "resource": ",RPRT,MVS_IMAGE"
-        },
-        "identifiers": [
-            {
-                "key": "CPCPPNAM",
-                "value": "VIRPT"
-            }
-        ],
-        "field": "CPCPPTOU",
-        "desc": "Physical total utilization for the VIRPT partition."
-    }
+    "identifiers": [
+      {
+        "key": "CPCPPNAM",
+        "value": "DV01"
+      }
+    ],
+    "field": "CPCPPTOU",
+    "desc": "Physical total utilization for DV01 partition"
+  }
 }
 ```
 
-Each top-level key in the JSON is the name of the Prometheus metric. You can name the metrics how ever you like, there is no strict convention.
+Each metric definition includes:
 
-| Field | Definition | 
-| ----- | ---------- |
-| ```lpar``` | The name of the reporting LPAR. |
-| ```request``` | Object that contains info about the request needed to get the data. The requests are RMF Monitor III, so you must specify a ```report``` type to call. Optionally, you can provide a ```resource``` target. If no ```resource``` is provided, then the default ```mvsResource``` specified in configuration will be used. |
-| ```identifiers``` | Array of key-value pairs that are used as conditions to get the data of the appropriate entity. For example, if you want the total physical utilization of only the partition with the name of ```QCK2```, you can set ```key``` to be ```CPCPPNAM``` (partition name) and ```value``` to ```QCK2```. Since ```identifiers``` is an array, you can add as many key-value pairs as needed for multiple conditions. Can be left empty ```[]``` if not needed. |
-| ```field``` | The field whose value is used as the Prometheus metric. |
-| ```desc``` | Optionally, you can provide a description for readability on what the metric is tracking. |
+| Field          | Description                                                                       |
+| -------------- | --------------------------------------------------------------------------------- |
+| `lpar`         | The name of the reporting LPAR                                                    |
+| `request`      | Object containing the RMF Monitor III `report` type and optional `resource`       |
+| `identifiers`  | Array of key-value pairs to filter specific entities (e.g., partition name)      |
+| `field`        | The field whose value is used as the Prometheus metric                            |
+| `desc`         | Optional description for the metric                                               |
 
-##### Creating a Prometheus Metric
+**Auto-Scraping:**
 
-To initialize a new custom Prometheus metric, make a ```POST``` request to ```/v1/metrics/{metricName}```, where ```metricName``` is the name of your new custom metric. This ```POST``` request should have a body with the format of [metric](#custom-metric-field-definitions). Here is an example:
-
-**Request:**
-
-```POST https://zebra.talktothemainframe.com:3390/v1/metrics/RPRT_QCK2_PTOU```
-
-**Request Body:**
-
-```
-{
-   "lpar": "RPRT",
-   "request": {
-       "report": "CPC",
-       "resource": ",RPRT,MVS_IMAGE"
-   },
-   "identifiers": [
-       {
-           "key": "CPCPPNAM",
-           "value": "QCK2"
-       }
-   ],
-   "field": "CPCPPTOU",
-   "desc": "Physical total utilization for the QCK2 partition."
-}
-```
-
-**Response**:
-
-```
-{
-    "msg": "Metrics were successfully created.",
-    "err": false
-}
-```
-
-##### Retrieving a Prometheus Metric
-
-To retrieve a custom Prometheus metric, make a ```GET``` request to ```/v1/metrics/{metricName}```, where ```metricName``` is the name of a custom metric that already exists. If you do not provide a metric name, it will list all current Prometheus metrics. Here is an example:
-
-**Request:**
-
-```GET https://zebra.talktothemainframe.com:3390/v1/metrics/RPRT_QCK2_PTOU```
-
-**Response:**
-
-```
-{
-    "data": {
-        "lpar": "RPRT",
-        "request": {
-            "report": "CPC",
-            "resource": ",RPRT,MVS_IMAGE"
-        },
-        "identifiers": [
-            {
-                "key": "CPCPPNAM",
-                "value": "QCK2"
-            }
-        ],
-        "field": "CPCPPTOU",
-        "desc": "Physical total utilization for the QCK2 partition."
-    },
-    "msg": "Metric 'RPRT_QCK2_PTOU' successfully retrieved",
-    "err": false
-}
-```
-
-##### Updating a Prometheus Metric
-
-To update a custom Prometheus metric, make a ```PUT``` request to ```/v1/metrics/{metricName}```, where ```metricName``` is the name of a custom metric that already exists. Here is an example:
-
-**Request:**
-
-```PUT https://zebra.talktothemainframe.com:3390/v1/metrics/RPRT_QCK2_PTOU```
-
-**Request Body:**
-
-```
-{
-   "lpar": "RPRT",
-   "request": {
-       "report": "CPC",
-       "resource": ",RPRT,MVS_IMAGE"
-   },
-   "identifiers": [
-       {
-           "key": "CPCPPNAM",
-           "value": "QCK2"
-       }
-   ],
-   "field": "CPCPLTOU",
-   "desc": "Logical total utilization for the VIRPT partition."
-}
-```
-
-**Response**:
-
-```
-{
-    "msg": "Metric was successfully updated.",
-    "err": false
-}
-```
-
-##### Deleting a Prometheus Metric
-
-To delete a custom Prometheus metric, make a ```DELETE``` request to ```/v1/metrics/{metricName}```, where ```metricName``` is the name of a custom metric that already exists. Here is an example:
-
-**Request:**
-
-```DELETE https://zebra.talktothemainframe.com:3390/v1/metrics/RPRT_QCK2_PTOU```
-
-**Response:**
-
-```
-{
-    "msg": "Metric 'RPRT_QCK2_PTOU' was successfully deleted.",
-    "err": false
-}
-```
+ZEBRA automatically scrapes the configured metrics at the interval specified by `rmf3interval` in your configuration (default 100 seconds). Prometheus should scrape the `/metrics` endpoint at a slightly longer interval (120s recommended) to avoid missing data.
 
 ---
 
 # Support
 
-For any questions or help with any aspect of ZEBRA, you can contact the development team directly or open an [issue](https://github.com/zowe/zebra/issues) on GitHub. For Slack users, there is a channel for ZEBRA in the Open Mainframe Project&copy;'s [workspace](openmainframeproject.slack.com) that you can use to get in touch with the team and community! We greatly appreciate any feedback or suggestions!
+For any questions or help with any aspect of ZEBRA, you can contact the development team directly or open an [issue](https://github.com/zowe/zebra/issues) on GitHub. For Slack users, there is a channel for ZEBRA in the Open Mainframe Project&copy;'s [workspace](https://openmainframeproject.slack.com) that you can use to get in touch with the team and community! We greatly appreciate any feedback or suggestions!
 
 | Name          | Role         | Contact                        |
 | ------------- | ------------ | ------------------------------ |
@@ -1001,61 +880,18 @@ For any questions or help with any aspect of ZEBRA, you can contact the developm
 | Salisu Ali    | Developer    | <salis7897@gmail.com>          |
 | Justin Santer | Developer    | <justin.santer@convergetp.com> |
 
-# Debugging in ZEBRA
+---
 
-ZEBRA includes a configurable debug logging system that allows you to control the verbosity of logs for different components.
+## About HMAI
 
-## Debug Configuration
+As a prerequisite to using the HMAI plugin, the Hitachi Vantara software products Mainframe Analytics Recorder (MAR) and Hitachi Mainframe Analytics Interpreter (HMAI) must be installed on a mainframe LPAR connected to a Hitachi Vantara mainframe array.
 
-The debug settings are controlled in the `src/config/debugConfig.js` file:
+HMAI converts MAR records in IBM z/OS® System Management Facilities (SMF) format to comma separated value (CSV) datasets. The CSV files contain key mainframe performance information for mainframe storage resources such as CLPR, MPB, Port, Parity Group, MPRank20 and LDEV.
 
-```javascript
-module.exports = {
-  // RMF Monitor III request/response logging
-  RMF3_DEBUG: false,
-  
-  // Parser debug logging
-  PARSER_DEBUG: false,
-  
-  // Database operations logging
-  DB_DEBUG: false
-};
-```
+The ZEBRA HMAI plugin includes components to automatically retrieve HMAI CSV files from an LPAR to the ZEBRA server using FTP and input the CSV files into a MySQL database. Grafana connects to the MySQL database as a Data Source and provides visualization of HMAI data using predefined dashboards.
 
-## Toggling Debug Settings
+For more information on MAR and HMAI, please view [Hitachi Mainframe Analytics Interpreter - FAQs](https://www.hitachivantara.com/en-us/insights/faq/mainframe-analytics-interpreter).
 
-You can toggle debug settings in two ways:
+---
 
-### 1. Edit the config file directly
-
-Open `src/config/debugConfig.js` and change the values from `false` to `true` for the components you want to debug.
-
-### 2. Use the toggleDebug.js script
-
-We've included a script to easily toggle debug settings:
-
-```bash
-# Enable RMF3 debugging
-node toggleDebug.js RMF3_DEBUG true
-
-# Disable parser debugging
-node toggleDebug.js PARSER_DEBUG false
-
-# Enable all debugging
-node toggleDebug.js all true
-
-# Disable all debugging
-node toggleDebug.js all false
-```
-
-## Available Debug Settings
-
-- `RMF3_DEBUG`: Controls logging of RMF Monitor III requests and responses
-- `PARSER_DEBUG`: Controls logging of XML/JSON parsing operations
-- `DB_DEBUG`: Controls logging of database operations
-
-## Important Notes
-
-- You must restart the ZEBRA application after changing debug settings
-- Enabling debug logging may significantly increase console output
-- For production environments, it's recommended to keep all debug settings disabled
+**Built with ❤️ by the Zowe community**
