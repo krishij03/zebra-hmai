@@ -52,11 +52,51 @@ Copyright Contributors to the Zowe Project.
 
 ZEBRA (Zowe Embedded Browser for RMF and APIs) is an open source incubator project for the Open Mainframe Project&copy;'s [Zowe](https://www.zowe.org/). The main goal of this project is to provide reusable and industry-compliant RMF data in JSON format. The benefit of using JSON is that it is a modern standard that is very attractive to developers. Because of this, there are many applications and use cases for third-party analysis and visualization tools to harvest ZEBRA's metrics.
 
-**TypeScript Rewrite:** This version of ZEBRA has been completely rewritten in TypeScript using modern frameworks:
-- **Backend:** NestJS with Fastify
-- **Frontend:** Next.js with React
-- **Monorepo:** pnpm workspaces for efficient development
-- **Type Safety:** Full TypeScript coverage for reliability
+### 🚀 Built with Modern Technology
+
+**ZEBRA has been completely rewritten in TypeScript** using enterprise-grade, production-ready frameworks and cutting-edge tools:
+
+#### **Backend Architecture**
+- 🏗️ **[NestJS](https://nestjs.com/)** - Progressive Node.js framework for scalable server-side applications
+- ⚡ **[Fastify](https://fastify.dev/)** - Lightning-fast HTTP framework (up to 20% faster than Express)
+- 🔷 **[TypeScript](https://www.typescriptlang.org/)** - Type-safe development with full static analysis
+- 🔄 **[BullMQ](https://docs.bullmq.io/)** - Redis-backed job queue for reliable background processing
+- 📊 **[Prometheus Client](https://github.com/siimon/prom-client)** - Industry-standard metrics collection
+- 🗄️ **[MySQL2](https://github.com/sidorares/node-mysql2)** - High-performance MySQL driver with stream support
+- 📁 **[basic-ftp](https://github.com/patrickjuchli/basic-ftp)** - Modern FTP client for mainframe data ingestion
+
+#### **Frontend Stack**
+- ⚛️ **[Next.js 16](https://nextjs.org/)** - React framework with Turbopack for blazing-fast builds
+- 💎 **[React 19](https://react.dev/)** - Declarative UI with modern hooks and server components
+- 🎨 **[Tailwind CSS](https://tailwindcss.com/)** - Utility-first CSS for rapid UI development
+- 🔍 **[TanStack Query](https://tanstack.com/query)** (React Query) - Powerful data synchronization and caching
+- 📝 **[Zod](https://zod.dev/)** - TypeScript-first schema validation with static type inference
+- 🎭 **[Playwright](https://playwright.dev/)** - End-to-end testing framework
+
+#### **Development Tools**
+- 📦 **[pnpm](https://pnpm.io/)** - Fast, disk-space efficient monorepo package manager
+- 🏢 **[pnpm Workspaces](https://pnpm.io/workspaces)** - Monorepo structure for shared code and dependencies
+- 🎯 **[Biome](https://biomejs.dev/)** - Lightning-fast linter and formatter (replaces ESLint + Prettier)
+- 🔧 **[tsup](https://tsup.egoist.dev/)** - TypeScript bundler for shared packages
+- ⚙️ **[Vitest](https://vitest.dev/)** - Blazing-fast unit testing framework
+
+#### **Integration & Third-Party Services**
+- 🟢 **[Redis](https://redis.io/)** - In-memory data store for job queues and caching
+- 🍃 **[MongoDB](https://www.mongodb.com/)** - NoSQL database for historical RMF Monitor III data
+- 🐬 **[MySQL](https://www.mysql.com/)** - Relational database for HMAI metrics storage
+- 📈 **[Prometheus](https://prometheus.io/)** - Time-series metrics monitoring and alerting
+- 📊 **[Grafana](https://grafana.com/)** - Beautiful dashboards and data visualization
+- 🔐 **[JWT](https://jwt.io/)** - JSON Web Token authentication (optional)
+
+#### **Architecture Highlights**
+- 🏛️ **Monorepo Structure** - Shared types, DTOs, and utilities across all packages
+- 🔒 **Type-Safe APIs** - End-to-end type safety from backend to frontend
+- 🎨 **Modern UI/UX** - Responsive design with loading states, progress bars, and toast notifications
+- 🔄 **Real-time Updates** - Polling-based data synchronization with React Query
+- 🚦 **API Versioning** - Structured `/api/v2/` endpoints for future compatibility
+- 📚 **OpenAPI/Swagger** - Auto-generated interactive API documentation
+- 🎭 **E2E Testing** - Comprehensive test coverage with Playwright
+- 🏃 **Background Jobs** - Asynchronous processing with retry mechanisms and job scheduling
 
 ---
 
