@@ -22,7 +22,7 @@ scrape_configs:
   # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
   - job_name: "zebra"
   
-    metrics_path: "/api/metrics"  # Updated for TypeScript API
+    metrics_path: "/api/v2/metrics"  # Updated for TypeScript API
     scrape_interval: 120s  # Should be > rmf3interval (100s default)
 
     # metrics_path defaults to '/metrics'
